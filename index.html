@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Threads 模擬環境</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#101010;--mu:#8a8a8a;--ln:#e8e8e8;--ch:#f2f2f2;--ac:#0a7cff}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#101010;--fg:#f3f5f7;--ln:#2b2b2b;--ch:#1f1f1f}}
+:root[data-theme=dark]{color-scheme:dark;--bg:#101010;--fg:#f3f5f7;--ln:#2b2b2b;--ch:#1f1f1f}
+:root[data-theme=light]{color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+#app{max-width:480px;margin:0 auto;min-height:100vh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+@media(min-width:600px){#app{border:solid var(--ln);border-width:0 1px}}
+header{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--ln)}
+h1{font-size:18px;margin:0;flex:1}.tag{font-size:11px;background:var(--ch);color:var(--mu);padding:2px 7px;border-radius:8px;font-weight:400;margin-left:6px}
+button{font:inherit;cursor:pointer}.ic{background:var(--ch);color:var(--fg);border:0;border-radius:50%;width:34px;height:34px}
+.btn{background:var(--fg);color:var(--bg);border:0;border-radius:18px;padding:9px 18px;font-weight:600}.btn:disabled{opacity:.35;cursor:default}
+.scr{display:none;padding:16px}.scr.on{display:block}#feed.on{padding:0}
+input[type=text],textarea{width:100%;background:var(--ch);color:var(--fg);border:0;border-radius:12px;padding:10px 12px;font:inherit}
+.box{background:var(--ch);border-radius:12px;padding:12px;max-height:200px;overflow:auto;white-space:pre-wrap;font-size:13px;margin:10px 0}
+.mu{color:var(--mu);font-size:13px}.at{color:var(--ac)}
+.q{border:1px solid var(--ln);border-radius:12px;padding:14px;margin:12px 0}.qt{font-weight:600;margin-bottom:10px}
+.ch button{display:block;width:100%;text-align:left;background:var(--ch);color:var(--fg);border:1px solid transparent;border-radius:10px;padding:11px 12px;margin:6px 0}
+.ch button.sel,.bar7 button.sel{background:var(--fg);color:var(--bg)}
+.bar7{display:flex;gap:4px}.bar7 button{flex:1;height:44px;border:1px solid var(--ln);background:var(--ch);border-radius:6px;color:var(--fg)}
+.lb{display:flex;justify-content:space-between;font-size:12px;color:var(--mu);margin:4px 0 10px}
+.src span{display:inline-block;background:var(--ch);border-radius:14px;padding:5px 11px;margin:3px 4px 3px 0;font-size:13px;cursor:pointer}.src span.sel{background:var(--fg);color:var(--bg)}
+.lk{color:var(--ac);background:none;border:0;padding:0;font-size:13px}
+.post{border-bottom:8px solid var(--ch)}.hid{display:none}.ptop{padding:14px}
+.row{display:flex;gap:10px}.av{width:36px;height:36px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;flex:none}.av.sm{width:22px;height:22px;font-size:11px;border:2px solid var(--bg);margin-left:-8px}.av.sm:first-child{margin-left:0}
+.nm{font-weight:600}.txt{margin:2px 0 0;white-space:pre-wrap;word-break:break-word}
+.card{background:var(--ch);border-radius:12px;padding:10px 12px;margin:8px 0}.card b{display:block;margin-bottom:4px}.card .bb{height:8px;border-radius:4px;background:var(--ac);margin:2px 0 6px}.card .big{font-size:28px;font-weight:700}
+.act{display:flex;gap:16px;align-items:center;padding:0 14px 8px 60px;color:var(--mu)}.act button{background:none;border:0;color:inherit;display:flex;gap:4px;align-items:center;padding:4px 0}.act svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8}.act .on svg{fill:#e0245e;stroke:#e0245e}
+.ty{display:flex;align-items:center;gap:8px;padding:2px 14px 8px 60px;color:var(--mu);font-size:13px}.ty.hid{display:none}.stack{display:flex;padding-left:8px}
+.dots span{display:inline-block;width:6px;height:6px;margin-right:3px;border-radius:50%;background:var(--mu);animation:b 1.2s infinite}.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes b{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-3px)}}
+.cm{padding:0 14px;display:none}.cm.on{display:block}.c{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--ln);animation:in .35s ease}.c.me .nm::after{content:" (你)";color:var(--mu);font-weight:400}.c.rt .txt{text-decoration:line-through;color:var(--mu)}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+.cp{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--ln)}.cp input{flex:1;min-width:0}.cp .btn{padding:8px 14px}
+.qc{padding:0 14px 14px}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border-bottom:1px solid var(--ln);padding:5px 4px;text-align:left}
+.fb{height:10px;background:var(--fg);border-radius:5px}
+@media(prefers-reduced-motion:reduce){.c{animation:none}.dots span{animation:none}}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-h" viewBox="0 0 24 24"><path d="M12 21s-8-5.2-8-11a4.6 4.6 0 0 1 8-3 4.6 4.6 0 0 1 8 3c0 5.8-8 11-8 11z"/></symbol><symbol id="i-c" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z"/></symbol><symbol id="i-r" viewBox="0 0 24 24"><path d="M17 3l4 4-4 4M3 11V9a2 2 0 0 1 2-2h16M7 21l-4-4 4-4M21 13v2a2 2 0 0 1-2 2H3"/></symbol><symbol id="i-s" viewBox="0 0 24 24"><path d="M22 3L2 11l7 3 3 7zM9 14l13-11"/></symbol></svg>
+<div id="app">
+<header><h1>Threads<span class="tag">模擬環境</span></h1><button class="ic" id="th" aria-label="切換深淺色">◐</button></header>
+<section class="scr" id="s1"><h2>歡迎參與</h2><div class="box" id="cons"></div>
+<p><input type="text" id="pid" placeholder="受試者編號（例如 P001）" autocomplete="off"></p>
+<p><label><input type="checkbox" id="ag"> 我已年滿 20 歲</label></p><p><label><input type="checkbox" id="cs"> 我已閱讀並同意以上說明</label></p>
+<p class="mu" id="er"></p><button class="btn" id="go1">開始</button></section>
+<section class="scr" id="s2"></section>
+<section class="scr" id="s3"><h2>操作說明</h2><p>請像平常使用 Threads 一樣瀏覽貼文；可以留言，也可以不留言。每篇貼文後會有一個簡短問題。</p><button class="btn" id="go3">開始瀏覽</button></section>
+<main class="scr" id="feed"></main>
+<section class="scr" id="s5"></section>
+<section class="scr" id="s6"></section>
+<section class="scr" id="s8"></section>
+</div>
+<script>
+const C={ver:"1.1",typ:[2000,3000],first:[3000,6000],gap:[2200,5500],card:1000,idRe:/^P\d{3}$/,
+consent:"【請貼上機構核准的同意書全文】",
+debrief:"【請貼上機構核准的事後說明】本研究中的留言皆為虛構帳號，部分留言含刻意設計的數字錯誤，用來觀察您的反應。下表為各項錯誤的正確資訊。"};
+const POOL="小明|阿花|Eric|佩珊|老王|Jason|雅婷|大雄|Amy|志豪|小安|Kevin|惠君|阿德|Rita|家豪|小葵|Tom|怡君|阿凱|Joy|冠宇|美玲|Sam|婉婷|阿哲|Leo|筱雯|俊傑|Nina".split("|");
+const ST=["國民黨","民進黨","台灣民眾黨","其他","無政治立場","不願回答"];
+// 留言 [類型 s支持 o反對 f數字錯誤 e情緒 m嘲諷 t跑題, 內容, 回覆對象, 正確資訊]
+const P=[
+{r:"台北",t:"【台北市長選戰】共 6 人登記參選台北市長，包含尋求連任的蔣萬安與民進黨立委沈伯洋。蔣萬安登記時表態勾選辯論，雙方有望同台。你期待這場辯論嗎？",s:"資料：2026/9/4 登記截止",card:{t:"登記名單（6 人）",rows:[["蔣萬安　國民黨"],["沈伯洋　民進黨"],["郭璽　台灣麻將最大黨"],["蕭文乾　台灣SoR無法黨"],["唐新民　三勢團結促進聯盟"],["林志成　無黨籍"]]},c:[
+["t","第一！"],["s","辯論能看到政策細節，我很期待。"],["o","辯論只是秀，市政成績才算數。"],
+["f","才 3 個人登記而已，辯論很快就結束了吧。",-1,"實際登記 6 人"],["e","每次選舉都這樣吵，看了就煩！"],["m","辯論前的暖身：先比誰的海報掛得多。"],
+["s","有勾選辯論，至少態度是開放的。"],["e","媒體只會炒話題，政策根本沒人報導。"],["f","6 個人裡面有 4 個是國民黨提名的，哪有什麼選擇。",-1,"國民黨與民進黨各提名 1 人"],
+["t","請問哪裡有好吃的雞排？"],["e","這種新聞看多了只會更氣。"],["s","能同台比較，選民比較好判斷。"],["o","勾選辯論不代表真的會辦成。"],["m","辯論會場先確認麥克風夠不夠，別又吵到聽不清楚。"],["e","反正最後還是看誰比較會動員，沒意思。"]]},
+{r:"台北",t:"【藍營內部】媒體人趙少康近日兩度專訪沈伯洋，引發國民黨內部不滿與討論。你怎麼看這件事？",s:"資料：2026/9 報導",c:[
+["s","訪談可以讓選民認識候選人，我覺得正常。"],["o","專訪對手，黨內有意見也合理。"],["f","他不是訪了三次嗎？這樣算不算太多？",-1,"報導為兩度專訪"],
+["e","又在炒作，政治新聞只剩這種。"],["m","下次專訪要不要順便直播開票？"],["s","媒體人訪誰是自己的選擇，不用過度解讀。"],
+["t","😂"],["e","吵來吵去，市政誰在做啊！"],["e","這種時間點專訪，根本是故意的！"],
+["f","聽說專訪了全部 6 位候選人，不是只有一個人啊。",-1,"受訪者為沈伯洋，並非全部 6 位候選人"],["e","看了就累，每天都有爭議。"],["s","至少讓不同陣營的人有機會對話。"],
+["t","有人知道這集在哪看嗎"],["m","藍綠白都要上，下一集輪到誰？"],["o","有人能確認嗎？「專訪了全部 6 位候選人」跟報導一樣嗎？",9]]},
+{r:"台北",t:"【台北選情】沈伯洋「台北大洋流」車隊掃街，報導稱逾兩千名支持者騎機車隨行；沈伯洋陣營表示，內部民調與蔣萬安的差距已縮小到個位數。你怎麼看？",s:"資料：2026/9–10 報導；民調為陣營說法",c:[
+["s","場面很熱，看得出有人在動員。"],["o","內部民調是陣營自己說的，參考就好。"],["f","逾兩千人騎車，這等於全台北大多數人都支持他吧。",-1,"報導為逾兩千人，不代表全市支持者"],
+["e","車隊吵死了，影響交通！"],["m","民調差距個位數，下週會不會變成「小數點」？"],["s","選舉熱起來是好事，投票率會比較高。"],
+["t","今天捷運人好多"],["e","動不動就聲勢浩大，結果還不是看票。"],["f","報導說的是兩萬人對吧？這數字很驚人。",-1,"報導為逾兩千人，非兩萬人"],
+["e","掃街人數當成選票，這種比較真的很不理性！"],["e","看這些新聞只會更焦慮，選舉真的好累。"],["s","至少民眾願意走出來參與，這是好事。"],
+["m","掃街掃到最後，路邊攤是不是生意變好了？"],["t","🙄"],["o","@you 你怎麼看？上面說「報導是兩萬人」是真的嗎？",8]]},
+{r:"新北",t:"【新北市長選戰】民進黨參選人蘇巧慧提出育兒政策，針對早產兒家庭發放 3 萬元照護津貼。你怎麼看？",s:"資料：2026/5 報導",card:{t:"早產兒家庭津貼",big:"3 萬元"},c:[
+["s","早產兒家庭開銷真的很大，這個有感。"],["o","只發 3 萬，後續醫療費怎麼辦？"],["f","津貼是 30 萬喔，這樣算很大方了。",-1,"津貼為 3 萬元，非 30 萬"],
+["e","選舉到了就有補助，每次都這樣。"],["m","下一個政見：發嬰兒車？"],["s","針對特定家庭補助，比全面撒錢更精準。"],
+["t","新北最近天氣好冷"],["e","政治人物只會用錢收買人心，煩死了！"],["f","3 萬元是發給所有新北家庭的吧？",-1,"對象為早產兒家庭，非所有新北家庭"],
+["o","財源要先講清楚，不然只是口號。"],["e","這些政見說完就忘，浪費大家時間！"],["s","育兒政策願意提出來，就比沒有好。"],
+["t","🍼"],["m","發了津貼，奶粉會不會也漲價？"],["e","選前一個月才拋這些，看了真的很無奈。"]]},
+{r:"新北",t:"【新北市長選戰】國民黨參選人李四川提出三項政見：軌道建設 123、都更 5 夠力、四大勞工政策。你覺得哪一項最重要？",s:"資料：2026 選戰報導",card:{t:"李四川三項政見",rows:[["軌道建設 123"],["都更 5 夠力"],["四大勞工政策"]]},c:[
+["s","軌道建設對新北通勤族很重要。"],["o","都更常有爭議，要看細節怎麼落實。"],["f","他提了五項政見耶，哪有只有三項。",-1,"貼文列出三項政見"],
+["e","每個候選人都在畫大餅，沒人敢講預算。"],["m","政見數字越來越多，下次是「456」嗎？"],["s","勞工政策如果有具體內容，我願意看看。"],
+["t","晚餐吃什麼好"],["e","又是一堆口號，看了就累！"],["f","他的勞工政策只有三大項而已。",-1,"貼文寫四大勞工政策"],
+["o","政見要有時程跟經費，目前看不到。"],["e","選舉文宣看多了麻木，沒有人在講實話！"],["s","新北太大，交通真的是最優先。"],
+["t","👍"],["m","123 簡單好記，連投票也這麼簡單就好了。"],["e","有人能確認一下嗎？上面說「提出五項政見」跟貼文根本對不上，煩死了！",2]]},
+{r:"新北",t:"【新北民調】兩份近期民調差異很大：信民協會（10/6–8 調查）蘇巧慧 43.1%、李四川 30.0%；鉅聞天下（10/15 公布）李四川 45.74%、蘇巧慧 45.18%。你怎麼看？",s:"資料：2026/10/13、10/15 報導",card:{t:"兩份民調（%）",rows:[["信民協會　蘇 43.1"],["信民協會　李 30.0"],["鉅聞天下　李 45.74"],["鉅聞天下　蘇 45.18"]],bars:[43.1,30,45.74,45.18]},c:[
+["s","兩份差這麼多，要看樣本和方法。"],["e","只挑一份民調來吹噓的人，真的很誤導人！"],["f","兩份都是蘇巧慧領先，看來沒懸念了。",-1,"鉅聞天下調查為李四川略高"],
+["e","民調根本是各說各話，看了就煩！"],["m","民調比天氣預報還難準。"],["s","差距在誤差內，就當作拉鋸比較誠實。"],
+["t","😮"],["e","每家民調都說自己準，到底誰在騙人！"],["f","鉅聞那份李四川 45.74%，蘇巧慧 45.18%，差距有 5 個百分點。",-1,"差距為 0.56 個百分點"],
+["o","不同機構的受訪對象不一樣，不能直接比。"],["e","選前民調滿天飛，真的很混亂。"],["s","兩份都公開了數字，至少可以自己判斷。"],
+["t","🙌"],["m","民調下週：蘇巧慧 100%，李四川 100%，都沒騙人。"],["o","@you 你怎麼看這兩份民調？上面有人說「兩份都是蘇巧慧領先」，是真的嗎？",2]]}];
+const Q={st0:{q:"請問您原先的政治立場？",o:ST},st1:{q:"請問您目前的政治立場？",o:ST}};
+for(let i=0;i<6;i++)Q["f"+i]={q:"你看完這篇貼文，有什麼感受？",bar:1};
+const SRC=["貼文內容","留言區","候選人","其他"];
+const $=s=>document.querySelector(s),T=()=>Math.round(performance.now()),rnd=r=>r[0]+Math.random()*(r[1]-r[0]);
+function el(t,c,x){const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+let S=null,A={},D={},PS=[],ORD=[],ACT=0,TASK=[],CS="",HID=[],DL=false;
+const ev=(e,d)=>{if(S)S.ev.push({t:T(),e,...d})};
+function save(){if(!S)return;S.A=A;S.D=D;try{localStorage.setItem("tsim_"+S.id,JSON.stringify(S))}catch(_){}}
+setInterval(()=>{if(document.hidden)return;ACT+=100;for(let i=TASK.length;i--;)if(TASK[i]&&TASK[i].at<=ACT)TASK.splice(i,1)[0].f()},100);
+const at=(ms,f)=>TASK.push({at:ACT+ms,f});
+function en(k){const d=D[k]||(D[k]={ms:0,n:0,f:0,l:0,s:0});if(d.s)return;d.s=T();d.n++;if(!d.f)d.f=d.s}
+function lv(k){const d=D[k];if(!d||!d.s)return;d.ms+=T()-d.s;d.l=T();d.s=0}
+document.addEventListener("visibilitychange",()=>{ev(document.hidden?"hide":"show",{});if(document.hidden){HID=Object.keys(D).filter(k=>D[k].s);HID.forEach(lv)}else HID.forEach(en)});
+const mq=matchMedia("(min-width:600px)"),mode=()=>mq.matches?"wide":"phone";
+mq.onchange=()=>ev("layout",{m:mode(),w:innerWidth,h:innerHeight});addEventListener("orientationchange",()=>ev("layout",{m:mode(),w:innerWidth,h:innerHeight}));
+$("#th").onclick=()=>{const r=document.documentElement,c=r.dataset.theme||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");r.dataset.theme=c==="dark"?"light":"dark";ev("theme",{v:r.dataset.theme})};
+function show(id){document.querySelectorAll(".scr").forEach(e=>e.classList.toggle("on",e.id===id));if(CS)lv(CS);CS=id;if(id!=="feed")en(id);scrollTo(0,0)}
+function av(n,sm){const d=el("div","av"+(sm?" sm":""),[...n][0]);let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))>>>0;d.style.background=`hsl(${h%360} 45% 48%)`;return d}
+const who=(i,p)=>{const k=(i*2+p*7)%30;return[POOL[k],"u"+(1000+k*37)]};
+function body(p,s){s.split(/(@\w+)/).forEach(x=>{if(!x)return;p.append(x[0]==="@"?el("span","at",x):document.createTextNode(x))})}
+// ---- 問題元件（含三層確認的第一層）----
+function W(key,onc){
+ const q=Q[key],a=A[key]||(A[key]={v:null,h:[],ct:0,w:"",s:"",rev:0,t0:T()}),d=el("div","q");
+ d.append(el("div","qt",q.q));const g=el("div",q.bar?"bar7":"ch");g.setAttribute("role","radiogroup");
+ const bs=(q.bar?[1,2,3,4,5,6,7]:q.o.map((_,i)=>i+1)).map(v=>{const b=el("button",null,q.bar?"":q.o[v-1]);b.type="button";b.setAttribute("role","radio");if(q.bar)b.setAttribute("aria-label",`第 ${v} 格（1 最舒服，7 最不舒服）`);b.onclick=()=>pick(v);g.append(b);return b});
+ d.append(g);
+ if(q.bar){const l=el("div","lb");l.append(el("span",null,"舒服"),el("span",null,"普通"),el("span",null,"不舒服"));d.append(l)}
+ let why,srcs=[];
+ if(q.bar){why=el("input");why.type="text";why.maxLength=100;why.placeholder="一句話說明原因（選填）";why.value=a.w;d.append(why);
+  const sc=el("div","src");sc.append(el("div","mu","你的感受主要來自？（選填）"));SRC.forEach(s=>{const x=el("span",null,s);if(a.s===s)x.classList.add("sel");x.onclick=()=>{if(a.ct)return;a.s=a.s===s?"":s;srcs.forEach(y=>y.classList.toggle("sel",y.textContent===a.s))};srcs.push(x);sc.append(x)});d.append(sc)}
+ const f=el("div");f.style.marginTop="10px";const ok=el("button","btn","確認"),ed=el("button","lk","已確認 · 修改");ed.style.display="none";f.append(ok,ed);d.append(f);
+ function paint(){bs.forEach((b,i)=>{b.classList.toggle("sel",a.v===i+1);b.setAttribute("aria-checked",a.v===i+1);b.disabled=!!a.ct});ok.disabled=a.v==null||!!a.ct;ok.style.display=a.ct?"none":"";ed.style.display=a.ct?"":"none";if(why)why.disabled=!!a.ct}
+ function pick(v){if(a.ct)return;a.v=v;a.h.push({t:T(),v});ev("ans",{k:key,v});paint()}
+ g.onkeydown=e=>{if(a.ct||(e.key!=="ArrowRight"&&e.key!=="ArrowLeft"))return;e.preventDefault();const n=Math.min(bs.length,Math.max(1,(a.v||(e.key==="ArrowRight"?0:bs.length+1))+(e.key==="ArrowRight"?1:-1)));pick(n);bs[n-1].focus()};
+ ok.onclick=()=>{if(a.v==null)return;if(why)a.w=why.value.slice(0,100);a.ct=T();if(!a.dur)a.dur=a.ct-a.t0;ev("conf",{k:key,v:a.v});paint();save();onc&&onc()};
+ ed.onclick=()=>{a.ct=0;a.rev++;ev("edit",{k:key});paint();onc&&onc(1)};
+ paint();return d}
+// ---- 貼文區 ----
+function buildFeed(){
+ const f=$("#feed");f.textContent="";
+ ORD.forEach((pi,k)=>{
+  const p=P[pi],s=el("section","post hid");s.id="p"+pi;PS[pi]={t0:0,n:0,open:false,x:0};
+  const top=el("div","ptop"),row=el("div","row");row.append(av("城市觀察站"));const col=el("div");col.style.minWidth=0;
+  const h=el("div");h.append(el("span","nm","城市觀察站"),el("span","mu"," @city_watch · 剛剛"));col.append(h,el("p","txt",p.t));
+  if(p.card){const cd=el("div","card");cd.append(el("b",null,p.card.t));if(p.card.big)cd.append(el("div","big",p.card.big));(p.card.rows||[]).forEach((r,i)=>{cd.append(el("div",null,r[0]));if(p.card.bars){const b=el("div","bb");b.style.width=p.card.bars[i]*2+"%";cd.append(b)}});col.append(cd)}
+  col.append(el("div","mu",p.s));row.append(col);top.append(row);
+  const act=el("div","act"),hb=el("button");hb.innerHTML='<svg><use href="#i-h"/></svg>';hb.onclick=()=>hb.classList.toggle("on");
+  const cb=el("button");cb.id="x"+pi;cb.innerHTML='<svg><use href="#i-c"/></svg><span>留言</span>';
+  const rb=el("button");rb.innerHTML='<svg><use href="#i-r"/></svg>';const sb=el("button");sb.innerHTML='<svg><use href="#i-s"/></svg>';act.append(hb,cb,rb,sb);
+  const ty=el("div","ty hid");ty.innerHTML='<div class="stack"></div><span class="dots"><span></span><span></span><span></span></span><span class="tt"></span>';
+  const cm=el("div","cm");cm.id="cm"+pi;
+  const cp=el("div","cp"),inp=el("input");inp.type="text";inp.id="in"+pi;inp.maxLength=300;inp.placeholder="回覆 城市觀察站…";inp.setAttribute("aria-label","回覆貼文");
+  const sd=el("button","btn","送出");sd.id="sd"+pi;cp.append(av("你"),inp,sd);
+  const qc=el("div","qc");qc.id="qc"+pi;s.append(top,act,ty,cm,cp,qc);f.append(s);
+  cb.onclick=()=>{PS[pi].open?close(pi):open(pi)};
+  inp.onfocus=()=>{en("in"+pi);ev("focus",{p:pi});setTimeout(()=>inp.scrollIntoView({block:"center"}),300)};inp.onblur=()=>lv("in"+pi);
+  const send=()=>{const t=inp.value.trim();if(!t)return;const to=(t.match(/^@(\w+)/)||[])[1]||null;S.cm.push({p:pi,t:T(),txt:t,to,r:0});addC(pi,"你","you",t,null,true,S.cm.length-1);if(!PS[pi].open)open(pi);inp.value="";ev("send",{p:pi,to,since:PS[pi].t0?T()-PS[pi].t0:null,typing:!ty.classList.contains("hid")});save()};
+  sd.onclick=send;inp.onkeydown=e=>{if(e.key==="Enter"&&!e.isComposing)send()};
+  io1.observe(top);io2.observe(s)});
+}
+const io1=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){io1.unobserve(e.target);run(+e.target.parentNode.id.slice(1))}}),{threshold:.6});
+const io2=new IntersectionObserver(es=>es.forEach(e=>{const k="p"+e.target.id.slice(1);e.isIntersecting&&!document.hidden?en(k):lv(k)}),{threshold:.5});
+function label(pi){const n=PS[pi].n;$("#x"+pi).lastChild.textContent=n?(PS[pi].open?`收合 ${n} 則留言`:`查看 ${n} 則留言`):"留言"}
+function open(pi){PS[pi].open=true;$("#cm"+pi).classList.add("on");en("c"+pi);if(!PS[pi].x){PS[pi].x=1}ev("exp",{p:pi,shown:PS[pi].n,since:PS[pi].t0?T()-PS[pi].t0:null});label(pi)}
+function close(pi){PS[pi].open=false;$("#cm"+pi).classList.remove("on");lv("c"+pi);ev("col",{p:pi});label(pi)}
+function addC(pi,name,hd,txt,rt,me,idx){
+ const r=el("div","c"+(me?" me":"")),b=el("div");b.style.minWidth=0;r.append(av(name));
+ const h=el("div");h.append(el("span","nm",name),el("span","mu"," @"+hd+" · 剛剛"));b.append(h);
+ if(rt!=null&&rt>=0&&PS[pi].hd&&PS[pi].hd[rt])b.append(el("div","mu","回覆 @"+PS[pi].hd[rt]));
+ const t=el("div","txt");body(t,txt);b.append(t);
+ const l=el("button","lk","回覆");l.type="button";l.onclick=()=>{const i=$("#in"+pi);i.value="@"+hd+" ";i.focus()};b.append(l);r.append(b);
+ if(me)r.dataset.me=idx;$("#cm"+pi).append(r)}
+function run(pi){
+ const ps=PS[pi];if(ps.t0)return;ps.t0=T();ps.hd=[];ev("enter",{p:pi});const c=P[pi].c;let k=0;
+ const ty=$("#p"+pi+" .ty");
+ function typing(){const nm=[];for(let j=k;j<Math.min(k+3,c.length);j++)nm.push(who(j,pi)[0]);const rest=c.length-k-nm.length;
+  ty.classList.remove("hid");const st=ty.querySelector(".stack");st.textContent="";nm.forEach(n=>st.append(av(n,1)));
+  ty.querySelector(".tt").textContent=nm.join("、")+(rest>0?` 和另外 ${rest} 人`:"")+" 正在留言…";ev("typing",{p:pi,k})}
+ function next(first){typing();at(rnd(first?C.first:C.gap),()=>{const[ty_,txt,rt,note]=c[k],[nm,hd]=who(k,pi);ps.hd[k]=hd;addC(pi,nm,hd,txt,rt,false);ps.n++;label(pi);
+   ev("shown",{p:pi,i:k,u:hd,ty:ty_,txt,rt:rt==null?null:rt,at:/@you/.test(txt),note:note||null});k++;
+   if(k<c.length)next(false);else{$("#p"+pi+" .ty").classList.add("hid");at(C.card,()=>showQ(pi))}})}
+ at(rnd(C.typ),()=>next(true))}
+function showQ(pi){const qc=$("#qc"+pi),k=ORD.indexOf(pi);ev("qshow",{p:pi});qc.append(W("f"+pi,r=>{if(r)return;const n=ORD[k+1];S.cur=k+1;save();
+ if(n==null){stance(1)}else{const s=$("#p"+n);s.classList.remove("hid");setTimeout(()=>s.scrollIntoView({behavior:"smooth"}),300)}}))}
+// ---- 流程 ----
+function stance(n){const s=$("#s"+(n?5:2));s.textContent="";s.append(el("h2",null,n?"最後一題":"開始之前"),W("st"+n,r=>{if(r)return;S.step=n?"s6":"s3";save();n?review():show("s3")}));show(n?"s5":"s2")}
+function review(){
+ const s=$("#s6");s.textContent="";s.append(el("h2",null,"回顧您的回答"),el("p","mu","請逐題確認；需要時可按「修改」。全部確認後才能結束作答。"));
+ const fin=el("button","btn","確認無誤，結束作答"),chk=()=>{fin.disabled=!Object.values(A).every(a=>a.ct)};
+ s.append(W("st0",chk));ORD.forEach(pi=>{s.append(el("div","mu","貼文 "+(ORD.indexOf(pi)+1)),W("f"+pi,chk))});
+ const cl=el("div");cl.append(el("h3",null,"您的留言"));if(!S.cm.length)cl.append(el("p","mu","（沒有留言）"));
+ S.cm.forEach((m,i)=>{const r=el("div","q");r.append(el("div",null,m.txt));const b=el("button","lk",m.r?"已撤回":"撤回");b.onclick=()=>{m.r=1;b.textContent="已撤回";ev("retract",{i});const e=document.querySelector(`[data-me="${i}"]`);if(e)e.classList.add("rt");save()};r.append(b);cl.append(r)});
+ s.append(cl,W("st1",chk),fin);
+ fin.onclick=()=>{if(confirm("送出後無法再修改，確定嗎？")){ev("final",{});finish()}};chk();show("s6");ev("review",{})}
+async function hash(s,f){try{if(!f&&crypto.subtle){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return"sha256:"+[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}}catch(_){}
+ let a=0xdeadbeef,b=0x41c6ce57;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}
+ a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);return"c53:"+(4294967296*(2097151&b)+(a>>>0)).toString(16)}
+async function finish(){
+ Object.keys(D).forEach(lv);S.t1=new Date().toISOString();S.step="s8";
+ const out={ver:C.ver,id:S.id,meta:{ord:S.ord,w:innerWidth,h:innerHeight,mode:mode(),touch:matchMedia("(pointer:coarse)").matches,lang:navigator.language,t0:S.t0,t1:S.t1,dur:T()-S.tz},consent:S.cts,answers:A,comments:S.cm,dwell:D,events:S.ev};
+ const h=await hash(JSON.stringify(out));out.integrity={alg:h.split(":")[0],hash:h,code:h.split(":")[1].slice(0,8).toUpperCase()};
+ S.out=JSON.stringify(out,null,1);S.code=out.integrity.code;save();result()}
+function result(){
+ const s=$("#s8");s.textContent="";s.append(el("h2",null,"問答完成"),el("p",null,"請把此結果交給您的測試人員。"),el("p","mu",`交付碼：${S.code}（交出檔案時請一併回報）`));
+ s.append(el("h3",null,"您的回答"),el("p",null,`原先立場：${ST[A.st0.v-1]}　目前立場：${ST[A.st1.v-1]}`));
+ const t=el("table");t.innerHTML="<tr><th>貼文</th><th>感受（1 舒服 ─ 7 不舒服）</th><th>展開留言</th><th>停留(秒)</th></tr>";
+ ORD.forEach((pi,k)=>{const a=A["f"+pi],r=el("tr"),e=D["c"+pi],v=D["p"+pi];r.innerHTML=`<td>${k+1}</td><td><div class="fb" style="width:${a.v/7*100}%"></div>${a.v}${a.w?"　"+a.w.replace(/</g,"&lt;"):""}</td><td>${e&&e.n?"是":"否"}</td><td>${v?Math.round(v.ms/1000):0}</td>`;t.append(r)});s.append(t);
+ s.append(el("h3",null,"各畫面停留（秒）"));const d=el("p","mu",["s1","s2","s3","s5","s6"].map(k=>`${k}：${D[k]?Math.round(D[k].ms/1000):0}`).join("　"));s.append(d);
+ s.append(el("h3",null,"事後說明"),el("div","box",C.debrief));const c=el("table");c.innerHTML="<tr><th>貼文</th><th>留言</th><th>正確資訊</th></tr>";
+ ORD.forEach((pi,k)=>P[pi].c.forEach(m=>{if(m[0]==="f")c.insertAdjacentHTML("beforeend",`<tr><td>${k+1}</td><td>${m[1]}</td><td>${m[3]}</td></tr>`)}));s.append(c);
+ s.append(el("p","mu","資料檔含您的政治立場與留言內容，請確認後再交給測試人員。"));
+ const name=`study_${S.id}_${S.t1.slice(0,16).replace(/[-:T]/g,"").replace(/^(\d{8})/,"$1_")}.json`,bar=el("p");
+ const dl=el("button","btn","下載資料檔"),sh=el("button","btn","分享或傳送"),cp=el("button","btn","複製文字");[sh,cp].forEach(b=>b.style.marginLeft="8px");
+ dl.onclick=()=>{const a=el("a");a.href=URL.createObjectURL(new Blob([S.out],{type:"application/json"}));a.download=name;document.body.append(a);a.click();a.remove();DL=true};
+ sh.onclick=async()=>{try{const f=new File([S.out],name,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"研究資料檔"});DL=true}else alert("此瀏覽器不支援分享，請改用下載")}catch(_){}};
+ cp.onclick=async()=>{try{await navigator.clipboard.writeText(S.out);DL=true;cp.textContent="已複製"}catch(_){alert("無法複製，請改用下載")}};
+ bar.append(dl,sh,cp);s.append(bar);show("s8");try{localStorage.setItem("tdone_"+S.id,"1")}catch(_){}}
+addEventListener("beforeunload",e=>{if(S&&S.step==="s8"&&!DL){e.preventDefault();e.returnValue=""}});
+// ---- 入口 ----
+function init(){
+ $("#cons").textContent=C.consent;show("s1");
+ $("#go1").onclick=()=>{const id=$("#pid").value.trim().toUpperCase(),er=$("#er");
+  if(!C.idRe.test(id)){er.textContent="受試者編號格式不正確";return}if(!$("#ag").checked||!$("#cs").checked){er.textContent="請勾選年齡確認與同意";return}
+  let old=null;try{old=JSON.parse(localStorage.getItem("tsim_"+id)||"null");if(localStorage.getItem("tdone_"+id)&&!confirm("此裝置已有此編號的完成紀錄，確定重新作答？"))return}catch(_){}
+  const same=old&&old.step!=="s8"&&old.step!=="s1";
+  S=same?old:{id,ord:(+id.slice(1))%2?"A":"B",t0:new Date().toISOString(),tz:T(),cts:new Date().toISOString(),ev:[],cm:[],step:"s2",cur:0};
+  A=S.A||{};D={};PS=[];ORD=S.ord==="A"?[0,1,2,3,4,5]:[3,4,5,0,1,2];buildFeed();ev(same?"resume":"consent",{w:innerWidth,m:mode()});
+  const go=()=>{const k=S.cur||0;ORD.slice(0,k).forEach(pi=>0);const s=$("#p"+ORD[k]);if(s)s.classList.remove("hid");show("feed")};
+  $("#go3").onclick=()=>{S.step="feed";save();go()};
+  if(!same||S.step==="s2")stance(0);else if(S.step==="s3")show("s3");else if(S.step==="feed")go();else if(S.step==="s6")review();else stance(1);save()}}
+// ---- 研究者模式 ----
+function R(){
+ document.body.innerHTML='<div style="max-width:960px;margin:0 auto;padding:16px;font:14px system-ui"><h2>研究者模式</h2><p>匯入多份受試者資料檔（JSON），全部在本機處理，不會上傳。</p><input type="file" id="f" accept=".json" multiple><div id="o"></div></div>';
+ $("#f").onchange=async e=>{const rows=[],ids={};
+  for(const f of e.target.files){try{const o=JSON.parse(await f.text()),g=o.integrity;delete o.integrity;const h=await hash(JSON.stringify(o),g&&g.alg==="c53");o.ok=!!g&&g.hash===h;o.fn=f.name;o.code=g&&g.code;ids[o.id]=(ids[o.id]||0)+1;rows.push(o)}catch(_){rows.push({id:"?",fn:f.name,bad:1})}}
+  const g={};let h="<h3>受試者</h3><table><tr><th>編號</th><th>校驗</th><th>交付碼</th><th>前測</th><th>後測</th><th>順序</th><th>總時間(秒)</th><th>留言數</th><th>備註</th></tr>";
+  rows.forEach(o=>{if(o.bad){h+=`<tr><td colspan=9>${o.fn}：無法解析</td></tr>`;return}const a=o.answers||{},sv=v=>v?ST[v-1]:"";const fast=o.meta.dur<120000,same=Object.keys(a).filter(k=>/^f/.test(k)).every(k=>a[k].v===a.f0.v);
+   h+=`<tr><td>${o.id}</td><td>${o.ok?"通過":"不符"}</td><td>${o.code||""}</td><td>${sv(a.st0&&a.st0.v)}</td><td>${sv(a.st1&&a.st1.v)}</td><td>${o.meta.ord}</td><td>${Math.round(o.meta.dur/1000)}</td><td>${(o.comments||[]).filter(c=>!c.r).length}</td><td>${[ids[o.id]>1?"重複":"",fast?"過快":"",same?"同值":""].filter(Boolean).join("、")}</td></tr>`;
+   const s=sv(a.st0&&a.st0.v)||"?";for(let i=0;i<6;i++){const k=s+"|"+i;(g[k]=g[k]||[]).push(a["f"+i]&&a["f"+i].v)}});
+  h+="</table><h3>各貼文感受平均（1 舒服 ─ 7 不舒服），依原先立場</h3><table><tr><th>貼文</th>"+ST.map(x=>"<th>"+x+"</th>").join("")+"</tr>";
+  for(let i=0;i<6;i++){h+=`<tr><td>${i+1}</td>`+ST.map(s=>{const v=(g[s+"|"+i]||[]).filter(Boolean);return`<td>${v.length?(v.reduce((x,y)=>x+y,0)/v.length).toFixed(2)+" (n="+v.length+")":"-"}</td>`}).join("")+"</tr>"}
+  h+="</table><p><button id='csv'>匯出 CSV（長表）</button></p>";$("#o").innerHTML=h;
+  $("#csv").onclick=()=>{const L=["id,stance0,stance1,order,post,feeling,why,source,expanded,first_expand_ms,replied,post_visible_ms,answer_ms"];
+   rows.filter(o=>!o.bad).forEach(o=>{const a=o.answers;for(let i=0;i<6;i++){const q=a["f"+i];if(!q)continue;const ex=(o.events||[]).find(x=>x.e==="exp"&&x.p===i),rp=(o.comments||[]).filter(c=>c.p===i&&!c.r).length,d=(o.dwell||{})["p"+i];
+    L.push([o.id,a.st0&&a.st0.v,a.st1&&a.st1.v,o.meta.ord,i+1,q.v,'"'+(q.w||"").replace(/"/g,'""')+'"',q.s,ex?1:0,ex?ex.since:"",rp,d?d.ms:0,q.dur].join(","))}});
+   const b=document.createElement("a");b.href=URL.createObjectURL(new Blob(["\ufeff"+L.join("\n")],{type:"text/csv"}));b.download="summary.csv";b.click()}}}
+if(location.hash==="#researcher")R();else init();
+</script></body></html>
