@@ -1,0 +1,4259 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Threads 社群瀏覽模擬研究環境 (v1.0)</title>
+<style>
+ :root {
+ --bg-outer: #f0f2f5;
+ --bg-app: #ffffff;
+ --bg-card: #ffffff;
+ --bg-subtle: #f6f7f8;
+ --bg-elevated: #f2f3f5;
+ --text-main: #101010;
+ --text-secondary: #6e6e6e;
+ --text-muted: #999999;
+ --border-color: #e4e6eb;
+ --thread-line: #d4d7dc;
+ --accent-primary: #101010;
+ --accent-PrimaryText: #ffffff;
+ --accent-blue: #0095f6;
+ --heart-red: #ff3040;
+ --warn-bg: #fff8e6;
+ --warn-border: #f0c36d;
+ --warn-text: #7a5200;
+ --err-bg: #fdecea;
+ --err-text: #b71c1c;
+ --ok-bg: #eef2f5;
+ --ok-text: #2c3e50;
+ --scale-1: #e8e8e8;
+ --scale-2: #dadada;
+ --scale-3: #cccccc;
+ --scale-4: #bebebe;
+ --scale-5: #b0b0b0;
+ --scale-6: #a2a2a2;
+ --scale-7: #949494;
+ --scale-active-bg: #262626;
+ --scale-active-text: #ffffff;
+ --shadow-frame: 0 12px 40px rgba(0, 0, 0, 0.12);
+ --font-sans: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, sans-serif;
+ }
+ html[data-theme="dark"] {
+ --bg-outer: #050505;
+ --bg-app: #101010;
+ --bg-card: #161616;
+ --bg-subtle: #1e1e1e;
+ --bg-elevated: #262626;
+ --text-main: #f3f5f7;
+ --text-secondary: #a0a0a0;
+ --text-muted: #6e6e6e;
+ --border-color: #2a2a2a;
+ --thread-line: #363636;
+ --accent-primary: #f3f5f7;
+ --accent-PrimaryText: #101010;
+ --accent-blue: #3897f0;
+ --heart-red: #ff3040;
+ --warn-bg: #2b2108;
+ --warn-border: #705310;
+ --warn-text: #f5d68e;
+ --err-bg: #311111;
+ --err-text: #ff8a80;
+ --ok-bg: #1f272d;
+ --ok-text: #cfd8dc;
+ --scale-1: #2a2a2a;
+ --scale-2: #333333;
+ --scale-3: #3c3c3c;
+ --scale-4: #454545;
+ --scale-5: #4e4e4e;
+ --scale-6: #575757;
+ --scale-7: #606060;
+ --scale-active-bg: #f3f5f7;
+ --scale-active-text: #101010;
+ --shadow-frame: 0 12px 44px rgba(0, 0, 0, 0.65);
+ }
+ * {
+ box-sizing: border-box;
+ -webkit-tap-highlight-color: transparent;
+ }
+ body {
+ margin: 0;
+ padding: 0;
+ font-family: var(--font-sans);
+ background-color: var(--bg-outer);
+ color: var(--text-main);
+ line-height: 1.5;
+ font-size: 15px;
+ min-height: 100vh;
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ }
+ button, input, textarea, select {
+ font-family: inherit;
+ font-size: inherit;
+ color: inherit;
+ }
+ button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+ outline: 2px solid var(--accent-blue);
+ outline-offset: 2px;
+ }
+ /* 手機螢幕比例 (9:16 ~ 9:20, 320px-430px) 與電腦螢幕比例 (16:9 / 16:10, >=431px) 響應式容納規範 */
+ html, body {
+ width: 100%;
+ max-width: 100%;
+ overflow-x: hidden;
+ }
+ .phone-shell {
+ width: 100%;
+ max-width: 100%;
+ min-height: 100vh;
+ background-color: var(--bg-app);
+ display: flex;
+ flex-direction: column;
+ position: relative;
+ margin: 0 auto;
+ }
+ /* 平板與電腦窄視窗 (431px - 1023px)：標準 390px–440px 置中手機外框 */
+ @media (min-width: 431px) {
+ body:not(.researcher-mode-active) {
+  padding: 16px 12px;
+ }
+ .phone-shell {
+  width: 100%;
+  max-width: var(--shell-max-w, 430px);
+  min-height: calc(100vh - 32px);
+  border-radius: 24px;
+  box-shadow: var(--shadow-frame);
+  border: 1px solid var(--border-color);
+ }
+ .top-header {
+  border-top-left-radius: 23px;
+  border-top-right-radius: 23px;
+ }
+ .bottom-nav {
+  border-bottom-left-radius: 23px;
+  border-bottom-right-radius: 23px;
+ }
+ }
+ /* 電腦寬螢幕 (16:9 / 16:10, >=1024px)：預設舒適 460px 外框 (可切換 390px 標準手機寬度) */
+ @media (min-width: 1024px) {
+ body:not(.researcher-mode-active) {
+  padding: 20px 16px;
+ }
+ .phone-shell {
+  max-width: var(--shell-max-w, 460px);
+ }
+ }
+ .phone-shell.force-390 {
+ --shell-max-w: 390px;
+ }
+ .phone-shell.force-500 {
+ --shell-max-w: 500px;
+ }
+ /* 頂部導覽列 */
+ .top-header {
+ position: sticky;
+ top: 0;
+ z-index: 40;
+ background-color: var(--bg-app);
+ border-bottom: 1px solid var(--border-color);
+ padding: 10px 14px 0 14px;
+ }
+ .top-bar-row {
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ min-height: 38px;
+ }
+ .sim-badge {
+ display: inline-flex;
+ align-items: center;
+ gap: 4px;
+ font-size: 11px;
+ font-weight: 600;
+ padding: 3px 8px;
+ border-radius: 999px;
+ background-color: var(--bg-elevated);
+ color: var(--text-secondary);
+ border: 1px solid var(--border-color);
+ letter-spacing: 0.03em;
+ }
+ .brand-logo-wrap {
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ }
+ .theme-toggle-btn {
+ background: var(--bg-subtle);
+ border: 1px solid var(--border-color);
+ border-radius: 999px;
+ width: 36px;
+ height: 36px;
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ cursor: pointer;
+ color: var(--text-main);
+ transition: background-color 0.15s ease;
+ }
+ .theme-toggle-btn:hover {
+ background: var(--bg-elevated);
+ }
+ .feed-tabs {
+ display: grid;
+ grid-template-columns: 1fr 1fr;
+ margin-top: 6px;
+ text-align: center;
+ font-size: 14px;
+ font-weight: 600;
+ user-select: none;
+ }
+ .feed-tab {
+ padding: 9px 0;
+ color: var(--text-secondary);
+ border-bottom: 2px solid transparent;
+ cursor: default;
+ }
+ .feed-tab.active {
+ color: var(--text-main);
+ border-bottom-color: var(--text-main);
+ }
+ /* 畫面進度指示條 */
+ .stage-progress-bar {
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ padding: 6px 14px;
+ background: var(--bg-subtle);
+ border-bottom: 1px solid var(--border-color);
+ font-size: 12px;
+ color: var(--text-secondary);
+ }
+ .stage-pill {
+ font-weight: 600;
+ color: var(--text-main);
+ }
+ /* 主內容區 */
+ .main-stage-container {
+ flex: 1;
+ padding-bottom: 64px;
+ }
+ .screen-view {
+ display: none;
+ padding: 16px 14px;
+ }
+ .screen-view.active {
+ display: block;
+ }
+ #screen-S4.screen-view {
+ padding: 0 0 24px 0;
+ }
+ /* 卡片與表單元件 */
+ .section-card {
+ background: var(--bg-card);
+ border: 1px solid var(--border-color);
+ border-radius: 16px;
+ padding: 16px;
+ margin-bottom: 14px;
+ }
+ .section-card.highlight-first {
+ border-width: 2px;
+ border-color: var(--text-main);
+ }
+ .card-step-tag {
+ display: inline-block;
+ font-size: 11px;
+ font-weight: 700;
+ padding: 2px 8px;
+ border-radius: 6px;
+ background: var(--bg-elevated);
+ color: var(--text-secondary);
+ margin-bottom: 8px;
+ }
+ .section-title {
+ font-size: 17px;
+ font-weight: 700;
+ margin: 0 0 8px 0;
+ }
+ .section-desc {
+ font-size: 13.5px;
+ color: var(--text-secondary);
+ margin: 0 0 12px 0;
+ }
+ .stance-options-grid {
+ display: flex;
+ flex-direction: column;
+ gap: 8px;
+ margin: 12px 0;
+ }
+ .radio-option-label {
+ display: flex;
+ align-items: center;
+ gap: 10px;
+ padding: 11px 13px;
+ border: 1px solid var(--border-color);
+ border-radius: 12px;
+ background: var(--bg-subtle);
+ cursor: pointer;
+ min-height: 44px;
+ font-weight: 500;
+ transition: border-color 0.15s ease, background-color 0.15s ease;
+ }
+ .radio-option-label:hover {
+ background: var(--bg-elevated);
+ }
+ .radio-option-label.selected {
+ border-color: var(--text-main);
+ background: var(--bg-elevated);
+ font-weight: 700;
+ }
+ .radio-option-label.locked {
+ opacity: 0.78;
+ cursor: not-allowed;
+ }
+ .radio-option-label input[type="radio"] {
+ width: 18px;
+ height: 18px;
+ margin: 0;
+ accent-color: var(--text-main);
+ }
+ .confirm-bar {
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ gap: 10px;
+ margin-top: 12px;
+ flex-wrap: wrap;
+ }
+ .confirmed-badge {
+ display: inline-flex;
+ align-items: center;
+ gap: 6px;
+ font-size: 13px;
+ font-weight: 600;
+ color: var(--ok-text);
+ background: var(--ok-bg);
+ padding: 5px 10px;
+ border-radius: 8px;
+ }
+ .modify-link-btn {
+ background: none;
+ border: none;
+ color: var(--accent-blue);
+ font-size: 13px;
+ font-weight: 600;
+ text-decoration: underline;
+ cursor: pointer;
+ padding: 4px 6px;
+ }
+ .btn-primary {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ gap: 6px;
+ width: 100%;
+ min-height: 44px;
+ padding: 10px 16px;
+ border-radius: 12px;
+ border: none;
+ background: var(--accent-primary);
+ color: var(--accent-PrimaryText);
+ font-weight: 700;
+ font-size: 15px;
+ cursor: pointer;
+ transition: opacity 0.15s ease;
+ }
+ .btn-primary:disabled {
+ opacity: 0.35;
+ cursor: not-allowed;
+ }
+ .btn-secondary {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ gap: 6px;
+ min-height: 42px;
+ padding: 8px 14px;
+ border-radius: 10px;
+ border: 1px solid var(--border-color);
+ background: var(--bg-subtle);
+ color: var(--text-main);
+ font-weight: 600;
+ font-size: 14px;
+ cursor: pointer;
+ }
+ .btn-secondary:hover:not(:disabled) {
+ background: var(--bg-elevated);
+ }
+ .form-field {
+ margin-bottom: 12px;
+ }
+ .form-label {
+ display: block;
+ font-size: 13.5px;
+ font-weight: 600;
+ margin-bottom: 6px;
+ }
+ .text-input {
+ width: 100%;
+ min-height: 44px;
+ padding: 9px 12px;
+ border-radius: 10px;
+ border: 1px solid var(--border-color);
+ background: var(--bg-subtle);
+ color: var(--text-main);
+ }
+ .consent-scroll-box {
+ max-height: 150px;
+ overflow-y: auto;
+ padding: 10px 12px;
+ border-radius: 10px;
+ border: 1px solid var(--border-color);
+ background: var(--bg-subtle);
+ font-size: 12.5px;
+ color: var(--text-secondary);
+ margin-bottom: 10px;
+ white-space: pre-line;
+ }
+ .checkbox-row {
+ display: flex;
+ align-items: flex-start;
+ gap: 10px;
+ padding: 8px 4px;
+ font-size: 13.5px;
+ cursor: pointer;
+ min-height: 40px;
+ }
+ .checkbox-row input[type="checkbox"] {
+ width: 18px;
+ height: 18px;
+ margin-top: 2px;
+ accent-color: var(--text-main);
+ flex-shrink: 0;
+ }
+ /* Threads 貼文卡片樣式 */
+ .thread-post-wrapper {
+ border-bottom: 1px solid var(--border-color);
+ padding: 14px 14px 16px 14px;
+ background: var(--bg-app);
+ }
+ .post-grid {
+ display: grid;
+ grid-template-columns: 38px minmax(0, 1fr);
+ column-gap: 10px;
+ width: 100%;
+ }
+ .post-grid > * {
+ min-width: 0;
+ max-width: 100%;
+ }
+ .avatar-col {
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ }
+ .avatar-circle {
+ width: 38px;
+ height: 38px;
+ border-radius: 50%;
+ overflow: hidden;
+ flex-shrink: 0;
+ border: 1px solid var(--border-color);
+ background: var(--bg-subtle);
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ }
+ .thread-connector-line {
+ width: 2px;
+ flex: 1;
+ min-height: 16px;
+ background-color: var(--thread-line);
+ margin: 6px 0;
+ border-radius: 1px;
+ }
+ .post-header-row {
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ margin-bottom: 4px;
+ }
+ .post-author-meta {
+ display: flex;
+ align-items: center;
+ gap: 6px;
+ flex-wrap: wrap;
+ }
+ .author-name {
+ font-weight: 700;
+ font-size: 14.5px;
+ }
+ .author-handle {
+ font-size: 12.5px;
+ color: var(--text-secondary);
+ }
+ .post-time {
+ font-size: 12.5px;
+ color: var(--text-muted);
+ }
+ .more-dots {
+ color: var(--text-secondary);
+ font-weight: bold;
+ letter-spacing: 1px;
+ user-select: none;
+ }
+ .post-body-text {
+ font-size: 14.5px;
+ line-height: 1.55;
+ margin: 4px 0 10px 0;
+ white-space: pre-line;
+ word-break: break-word;
+ }
+ .post-date-note {
+ display: inline-block;
+ font-size: 11.5px;
+ color: var(--text-secondary);
+ background: var(--bg-subtle);
+ padding: 2px 7px;
+ border-radius: 6px;
+ margin-bottom: 8px;
+ }
+ .infographic-box {
+ width: 100%;
+ max-width: 100%;
+ border: 1px solid var(--border-color);
+ border-radius: 12px;
+ overflow: hidden;
+ background: var(--bg-subtle);
+ margin-bottom: 10px;
+ }
+ .infographic-box svg {
+ display: block;
+ width: 100%;
+ max-width: 100%;
+ height: auto;
+ max-height: 220px;
+ }
+ /* 互動列 */
+ .action-bar {
+ display: flex;
+ align-items: center;
+ gap: 16px;
+ margin: 4px 0 8px 0;
+ }
+ .icon-action-btn {
+ display: inline-flex;
+ align-items: center;
+ gap: 5px;
+ background: none;
+ border: none;
+ padding: 6px 4px;
+ min-height: 36px;
+ color: var(--text-main);
+ cursor: pointer;
+ font-size: 13px;
+ border-radius: 8px;
+ }
+ .icon-action-btn.static-look {
+ cursor: default;
+ color: var(--text-secondary);
+ }
+ .icon-action-btn.liked {
+ color: var(--heart-red);
+ }
+ @keyframes heartPop {
+ 0% { transform: scale(1); }
+ 40% { transform: scale(1.32); }
+ 75% { transform: scale(0.92); }
+ 100% { transform: scale(1); }
+ }
+ .heart-anim {
+ animation: heartPop 0.32s ease;
+ }
+ /* 正在輸入「…」與展開留言區按鈕 */
+ .typing-status-bar {
+ display: flex;
+ align-items: center;
+ gap: 8px;
+ font-size: 12.5px;
+ color: var(--text-secondary);
+ padding: 6px 10px;
+ background: var(--bg-subtle);
+ border-radius: 10px;
+ margin-bottom: 8px;
+ }
+ .typing-dots {
+ display: inline-flex;
+ gap: 3px;
+ align-items: center;
+ }
+ .typing-dots span {
+ width: 5px;
+ height: 5px;
+ border-radius: 50%;
+ background: var(--text-secondary);
+ animation: dotPulse 1.2s infinite ease-in-out;
+ }
+ .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+ .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+ @keyframes dotPulse {
+ 0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+ 40% { opacity: 1; transform: scale(1.1); }
+ }
+ .toggle-comments-btn {
+ background: none;
+ border: none;
+ color: var(--text-secondary);
+ font-size: 13px;
+ font-weight: 600;
+ padding: 6px 2px;
+ cursor: pointer;
+ display: inline-flex;
+ align-items: center;
+ gap: 6px;
+ }
+ .toggle-comments-btn:hover {
+ color: var(--text-main);
+ }
+ /* 留言串 */
+ .comments-container {
+ margin-top: 8px;
+ border-top: 1px solid var(--border-color);
+ padding-top: 10px;
+ }
+ .comment-item {
+ display: grid;
+ grid-template-columns: 30px minmax(0, 1fr);
+ column-gap: 8px;
+ margin-bottom: 10px;
+ width: 100%;
+ }
+ .comment-item > * {
+ min-width: 0;
+ max-width: 100%;
+ }
+ @keyframes commentSlideIn {
+ from { opacity: 0; transform: translateY(8px); }
+ to { opacity: 1; transform: translateY(0); }
+ }
+ .comment-item.newly-added {
+ animation: commentSlideIn 0.28s ease-out;
+ }
+ .comment-avatar {
+ width: 30px;
+ height: 30px;
+ border-radius: 50%;
+ overflow: hidden;
+ border: 1px solid var(--border-color);
+ background: var(--bg-subtle);
+ }
+ .comment-body-wrap {
+ font-size: 13.5px;
+ padding-bottom: 6px;
+ }
+ .comment-header {
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ gap: 6px;
+ }
+ .comment-author {
+ font-weight: 700;
+ font-size: 13px;
+ }
+ .comment-reply-tag {
+ display: inline-block;
+ font-size: 11.5px;
+ color: var(--accent-blue);
+ background: var(--bg-subtle);
+ padding: 1px 6px;
+ border-radius: 4px;
+ margin: 2px 0;
+ }
+ .comment-text {
+ margin: 3px 0 4px 0;
+ line-height: 1.45;
+ word-break: break-word;
+ }
+ .reply-trigger-btn {
+ background: none;
+ border: none;
+ font-size: 12px;
+ color: var(--text-secondary);
+ font-weight: 600;
+ padding: 2px 4px;
+ cursor: pointer;
+ }
+ .reply-trigger-btn:hover {
+ color: var(--text-main);
+ text-decoration: underline;
+ }
+ /* 常駐留言輸入框 (@you) */
+ .comment-composer {
+ margin-top: 10px;
+ padding: 10px;
+ border-radius: 12px;
+ background: var(--bg-subtle);
+ border: 1px solid var(--border-color);
+ }
+ .composer-top-row {
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ font-size: 12px;
+ color: var(--text-secondary);
+ margin-bottom: 6px;
+ }
+ .composer-you-tag {
+ display: inline-flex;
+ align-items: center;
+ gap: 6px;
+ font-weight: 700;
+ color: var(--text-main);
+ }
+ .composer-input-row {
+ display: flex;
+ gap: 8px;
+ align-items: flex-end;
+ }
+ .composer-textarea {
+ flex: 1;
+ min-height: 40px;
+ max-height: 96px;
+ resize: vertical;
+ padding: 8px 10px;
+ border-radius: 10px;
+ border: 1px solid var(--border-color);
+ background: var(--bg-app);
+ font-size: 13.5px;
+ }
+ .composer-send-btn {
+ min-height: 40px;
+ padding: 0 12px;
+ border-radius: 10px;
+ border: none;
+ background: var(--accent-primary);
+ color: var(--accent-PrimaryText);
+ font-weight: 700;
+ font-size: 13px;
+ cursor: pointer;
+ flex-shrink: 0;
+ }
+ .composer-send-btn:disabled {
+ opacity: 0.35;
+ cursor: not-allowed;
+ }
+ /* 感受題 (7 段中性灰階長條，每段觸控區 >= 44px) */
+ .feeling-card {
+ margin-top: 14px;
+ padding: 14px 12px;
+ border-radius: 14px;
+ background: var(--bg-subtle);
+ border: 1.5px solid var(--border-color);
+ }
+ .feeling-scale-labels {
+ display: flex;
+ justify-content: space-between;
+ font-size: 12.5px;
+ font-weight: 600;
+ color: var(--text-secondary);
+ margin-bottom: 6px;
+ }
+ .feeling-bar-grid {
+ display: grid;
+ grid-template-columns: repeat(7, minmax(0, 1fr));
+ gap: 4px;
+ width: 100%;
+ margin-bottom: 12px;
+ }
+ .feeling-seg-btn {
+ min-height: 48px;
+ min-width: 0;
+ width: 100%;
+ border: 1.5px solid var(--border-color);
+ border-radius: 8px;
+ font-weight: 700;
+ font-size: 13.5px;
+ cursor: pointer;
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ justify-content: center;
+ transition: transform 0.1s ease, border-color 0.1s ease;
+ padding: 2px 0;
+ }
+ .feeling-seg-btn[data-val="1"] { background: var(--scale-1); }
+ .feeling-seg-btn[data-val="2"] { background: var(--scale-2); }
+ .feeling-seg-btn[data-val="3"] { background: var(--scale-3); }
+ .feeling-seg-btn[data-val="4"] { background: var(--scale-4); }
+ .feeling-seg-btn[data-val="5"] { background: var(--scale-5); }
+ .feeling-seg-btn[data-val="6"] { background: var(--scale-6); }
+ .feeling-seg-btn[data-val="7"] { background: var(--scale-7); }
+ .feeling-seg-btn.selected {
+ background: var(--scale-active-bg) !important;
+ color: var(--scale-active-text) !important;
+ border-color: var(--text-main);
+ transform: translateY(-1px);
+ }
+ .feeling-seg-btn:disabled {
+ cursor: not-allowed;
+ opacity: 0.8;
+ }
+ .source-chips-row {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 6px;
+ margin-top: 6px;
+ }
+ .source-chip-btn {
+ padding: 7px 11px;
+ min-height: 36px;
+ border-radius: 999px;
+ border: 1px solid var(--border-color);
+ background: var(--bg-app);
+ font-size: 12.5px;
+ font-weight: 600;
+ cursor: pointer;
+ }
+ .source-chip-btn.selected {
+ background: var(--accent-primary);
+ color: var(--accent-PrimaryText);
+ border-color: var(--accent-primary);
+ }
+ /* 底部導覽列 (外觀) */
+ .bottom-nav {
+ position: sticky;
+ bottom: 0;
+ z-index: 35;
+ height: 52px;
+ background: var(--bg-app);
+ border-top: 1px solid var(--border-color);
+ display: grid;
+ grid-template-columns: repeat(5, 1fr);
+ align-items: center;
+ justify-items: center;
+ color: var(--text-secondary);
+ margin-top: auto;
+ }
+ /* 對話框 Modal (S7 等) */
+ .modal-backdrop {
+ position: fixed;
+ inset: 0;
+ background: rgba(0, 0, 0, 0.55);
+ display: none;
+ align-items: center;
+ justify-content: center;
+ z-index: 100;
+ padding: 16px;
+ }
+ .modal-backdrop.open {
+ display: flex;
+ }
+ .modal-card {
+ width: 100%;
+ max-width: 350px;
+ background: var(--bg-card);
+ border: 1px solid var(--border-color);
+ border-radius: 18px;
+ padding: 20px;
+ box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+ }
+ /* 研究者模式寬版儀表板 */
+ .researcher-panel {
+ display: none;
+ width: 100%;
+ max-width: 1160px;
+ padding: 24px 18px 60px 18px;
+ margin: 0 auto;
+ }
+ body.researcher-mode-active .phone-shell {
+ display: none;
+ }
+ body.researcher-mode-active .researcher-panel {
+ display: block;
+ }
+ .res-grid {
+ display: grid;
+ grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+ gap: 14px;
+ margin-bottom: 18px;
+ }
+ .res-table-wrap {
+ overflow-x: auto;
+ border: 1px solid var(--border-color);
+ border-radius: 12px;
+ background: var(--bg-card);
+ margin-bottom: 18px;
+ }
+ table.res-table {
+ width: 100%;
+ border-collapse: collapse;
+ font-size: 13px;
+ text-align: left;
+ }
+ table.res-table th, table.res-table td {
+ padding: 9px 11px;
+ border-bottom: 1px solid var(--border-color);
+ white-space: nowrap;
+ }
+ table.res-table th {
+ background: var(--bg-subtle);
+ font-weight: 700;
+ }
+ .tag-flag {
+ display: inline-block;
+ padding: 2px 7px;
+ border-radius: 6px;
+ font-size: 11.5px;
+ font-weight: 700;
+ margin-right: 4px;
+ }
+ .tag-flag.ok { background: var(--ok-bg); color: var(--ok-text); }
+ .tag-flag.err { background: var(--err-bg); color: var(--err-text); }
+ .tag-flag.warn { background: var(--warn-bg); color: var(--warn-text); }
+ /* 系統設定減少動態時關閉動畫 */
+ @media (prefers-reduced-motion: reduce) {
+ *, *::before, *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+ }
+ }
+</style>
+</head>
+<body>
+<!-- 受試者模式外框 (390px) -->
+<div class="phone-shell" id="participant-shell">
+ <header class="top-header" role="banner">
+ <div class="top-bar-row">
+  <span class="sim-badge" title="學術研究模擬環境">
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+   <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.6"/>
+   <circle cx="8" cy="8" r="2.5" fill="currentColor"/>
+  </svg>
+  模擬環境
+  </span>
+  <div class="brand-logo-wrap" aria-label="Threads 風格自繪圖樣">
+  <!-- 自繪流線對話迴圈 SVG (非官方標誌) -->
+  <svg width="28" height="28" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+   <path d="M18 4C10.268 4 4 10.268 4 18C4 25.732 10.268 32 18 32C22.4 32 26.32 29.97 28.88 26.8" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+   <path d="M23.5 14.5C23.5 11.46 21.04 9 18 9C14.69 9 12 11.69 12 15C12 18.31 14.69 21 18 21C21.31 21 24 18.31 24 15V21.5C24 23.98 25.79 25.5 27.8 25.5C29.8 25.5 31.5 23.8 31.5 20.5C31.5 12.49 25.46 6 18 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+  </svg>
+  </div>
+  <button type="button" class="theme-toggle-btn" id="btn-theme-toggle" aria-label="切換淺色或深色主題" title="切換淺色／深色外觀">
+  <svg id="icon-theme-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none;">
+   <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+  </svg>
+  <svg id="icon-theme-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+   <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+  </button>
+ </div>
+ <div class="feed-tabs" aria-hidden="true">
+  <div class="feed-tab active">為你推薦</div>
+  <div class="feed-tab">追蹤中</div>
+ </div>
+ </header>
+ <div class="stage-progress-bar" aria-live="polite">
+ <span class="stage-pill" id="stage-label-text">步驟 1 / 8：前測政治立場與受試者入口</span>
+ <span id="stage-sub-status">必填階段</span>
+ </div>
+ <!-- 中斷續答提示橫幅 -->
+ <div id="resume-banner" style="display:none; background:var(--warn-bg); border-bottom:1px solid var(--warn-border); color:var(--warn-text); padding:10px 14px; font-size:13px;">
+ <div style="font-weight:700; margin-bottom:6px;">偵測到您上次有未完成的作答進度</div>
+ <div style="display:flex; gap:8px;">
+  <button type="button" class="btn-secondary" id="btn-resume-keep" style="min-height:34px; padding:4px 10px; font-size:12.5px;">繼續上次進度</button>
+  <button type="button" class="btn-secondary" id="btn-resume-reset" style="min-height:34px; padding:4px 10px; font-size:12.5px;">重新開始新作答</button>
+ </div>
+ </div>
+ <main class="main-stage-container" id="main-stage">
+ <!-- S2 & S1 開場階段：最一開始立即詢問政治立場 (S2)，接著完成受試者編號與同意書 (S1) -->
+ <section class="screen-view active" id="screen-S1-S2" aria-label="開場前測政治立場與受試者同意書">
+  <!-- 第一區塊 (最一開始)：S2 前測政治立場 -->
+  <div class="section-card highlight-first" id="card-pretest-s2">
+  <span class="card-step-tag">第一部分（前測 S2・必填）</span>
+  <h1 class="section-title">請問您原先的政治立場？</h1>
+  <p class="section-desc">在開始瀏覽社群模擬貼文前，請先選擇您目前的政治立場傾向，點選後請按「確認」鎖定。</p>
+  <div class="stance-options-grid" id="pretest-options-container" role="radiogroup" aria-label="請問您原先的政治立場？"></div>
+  <div class="confirm-bar">
+   <button type="button" class="btn-primary" id="btn-confirm-pretest" disabled>確認政治立場</button>
+   <div id="pretest-confirmed-status" style="display:none; width:100%; align-items:center; justify-content:space-between;">
+   <span class="confirmed-badge">✓ 已確認立場：<strong id="pretest-confirmed-label"></strong></span>
+   <button type="button" class="modify-link-btn" id="btn-modify-pretest">修改</button>
+   </div>
+  </div>
+  <div id="return-review-from-s2" style="display:none; margin-top:10px;">
+   <button type="button" class="btn-secondary" id="btn-back-to-s6-from-s2" style="width:100%;">返回回顧頁 (S6)</button>
+  </div>
+  </div>
+  <!-- 第二區塊：S1 受試者入口、年齡確認與研究同意書 -->
+  <div class="section-card" id="card-entry-s1">
+  <span class="card-step-tag">第二部分（入口與同意書 S1・必填）</span>
+  <h2 class="section-title">受試者編號與研究知情同意書</h2>
+  <p class="section-desc" id="s1-lock-hint">請先確認上方「原先的政治立場」，並填寫下方受試者編號與勾選同意書。</p>
+  <div class="form-field">
+   <label class="form-label" for="input-participant-id">受試者編號（格式：P001–P999）</label>
+   <input type="text" id="input-participant-id" class="text-input" placeholder="例如：P001（奇數台北先／偶數新北先）" maxlength="10" autocomplete="off">
+   <div id="pid-feedback-msg" style="font-size:12px; margin-top:5px; color:var(--text-secondary);">
+   請輸入測試人員提供之編號（如 P001）。
+   </div>
+   <!-- 重複編號提示框 -->
+   <div id="pid-duplicate-box" style="display:none; margin-top:8px; padding:9px 11px; border-radius:10px; background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); font-size:12.5px;">
+   <div>此受試者編號在本機已有完成紀錄。</div>
+   <label class="checkbox-row" style="min-height:30px; padding:4px 0 0 0;">
+    <input type="checkbox" id="chk-allow-duplicate">
+    <span>我確認要以此編號重新作答</span>
+   </label>
+   </div>
+  </div>
+  <div class="form-field">
+   <div class="form-label">研究知情同意書</div>
+   <div class="consent-scroll-box" id="consent-text-box" tabindex="0" aria-label="研究知情同意書內容"></div>
+   <label class="checkbox-row" for="chk-age-confirm">
+   <input type="checkbox" id="chk-age-confirm">
+   <span>我確認已年滿 18 歲（具備完全研究參與同意能力）。</span>
+   </label>
+   <label class="checkbox-row" for="chk-consent-confirm">
+   <input type="checkbox" id="chk-consent-confirm">
+   <span>我已詳細閱讀上述研究說明，了解資料以匿名檔案回收（B 方案），並同意參與本研究。</span>
+   </label>
+  </div>
+  <button type="button" class="btn-primary" id="btn-go-s3" disabled>
+   下一步：閱讀操作說明 (S3)
+  </button>
+  </div>
+ </section>
+ <!-- S3 操作說明 -->
+ <section class="screen-view" id="screen-S3" aria-label="操作說明">
+  <div class="section-card">
+  <span class="card-step-tag">操作說明（S3）</span>
+  <h2 class="section-title">瀏覽與作答方式說明</h2>
+  <p style="font-size:15.5px; font-weight:700; padding:12px; background:var(--bg-subtle); border-radius:12px; border-left:4px solid var(--text-main); margin:12px 0;">
+   「請像平常使用 Threads 一樣瀏覽，可以留言，也可以不留言。」
+  </p>
+  <ul style="font-size:13.5px; color:var(--text-secondary); padding-left:20px; margin:12px 0 18px 0;">
+   <li style="margin-bottom:6px;">接下來將依序出現 <strong>6 篇社群貼文</strong>。</li>
+   <li style="margin-bottom:6px;">您可以自由點擊愛心、點選「查看留言」展開或收合網友回覆，也可以在貼文底部的輸入框（顯示為「你」<code>@you</code>）發表留言或回覆特定網友。</li>
+   <li style="margin-bottom:6px;">每篇貼文的網友留言產生完畢後，貼文下方會浮現<strong>感受題</strong>。請點選 1–7 段感受並按下「確認」鎖定後，下一篇貼文就會自動出現。</li>
+  </ul>
+  <button type="button" class="btn-primary" id="btn-start-feed-s4">
+   開始瀏覽貼文 (進入 S4)
+  </button>
+  </div>
+ </section>
+ <!-- S4 貼文區 (6 篇貼文依序出現) -->
+ <section class="screen-view" id="screen-S4" aria-label="模擬貼文動態牆">
+  <div id="feed-posts-list"></div>
+  <div id="feed-complete-cta" style="display:none; padding:18px 14px;">
+  <div class="section-card" style="margin-bottom:0; text-align:center;">
+   <div style="font-weight:700; font-size:15.5px; margin-bottom:6px;">6 篇貼文皆已完成瀏覽與感受確認</div>
+   <p class="section-desc">請點擊下方按鈕前往結尾問卷與總回顧。</p>
+   <button type="button" class="btn-primary" id="btn-go-s5">前往結尾問題</button>
+  </div>
+  </div>
+ </section>
+ <!-- S5 後測：結尾再問一次立場 -->
+ <section class="screen-view" id="screen-S5" aria-label="後測政治立場">
+  <div class="section-card">
+  <span class="card-step-tag">結尾問卷（後測 S5・必填）</span>
+  <h2 class="section-title">請問您目前的政治立場？</h2>
+  <p class="section-desc">瀏覽完以上 6 篇貼文與討論串後，請選擇您目前的政治立場傾向，點選後請按「確認」鎖定。</p>
+  <div class="stance-options-grid" id="posttest-options-container" role="radiogroup" aria-label="請問您目前的政治立場？"></div>
+  <div class="confirm-bar">
+   <button type="button" class="btn-primary" id="btn-confirm-posttest" disabled>確認目前立場</button>
+   <div id="posttest-confirmed-status" style="display:none; width:100%; align-items:center; justify-content:space-between;">
+   <span class="confirmed-badge">✓ 已確認立場：<strong id="posttest-confirmed-label"></strong></span>
+   <button type="button" class="modify-link-btn" id="btn-modify-posttest">修改</button>
+   </div>
+  </div>
+  <div style="margin-top:16px;">
+   <button type="button" class="btn-primary" id="btn-go-s6" disabled>前往作答回顧頁 (S6)</button>
+  </div>
+  </div>
+ </section>
+ <!-- S6 回顧頁：逐題列出全部回答與自己的留言，可修改/撤回 -->
+ <section class="screen-view" id="screen-S6" aria-label="作答回顧與確認">
+  <div class="section-card">
+  <span class="card-step-tag">總回顧（S6・三層確認之第二層）</span>
+  <h2 class="section-title">檢查您的全部回答與留言</h2>
+  <p class="section-desc">請檢視下方每一題的回答與您的留言。若需調整，可點選「修改」回到該題（修改後需重新按確認），或撤回已發出的留言。</p>
+  <div id="review-items-container"></div>
+  <div id="review-comments-container" style="margin-top:14px;"></div>
+  <div id="review-unconfirmed-warning" style="display:none; padding:10px; border-radius:10px; background:var(--err-bg); color:var(--err-text); font-size:13px; margin:12px 0;">
+   尚有題目處於「修改中（未確認）」狀態，請先完成確認後再送出。
+  </div>
+  <div style="margin-top:16px;">
+   <button type="button" class="btn-primary" id="btn-open-submit-modal">確認無誤，結束作答</button>
+  </div>
+  </div>
+ </section>
+ <!-- S8 結果頁：全部回答、感受長條圖、停留時間、事後說明、資料檔交付 -->
+ <section class="screen-view" id="screen-S8" aria-label="研究結果與資料檔交付">
+  <!-- 資料檔交付與 8 碼交付碼 -->
+  <div class="section-card highlight-first">
+  <span class="card-step-tag">資料回收（S8・B 方案）</span>
+  <h2 class="section-title">作答已完成！請下載並交付資料檔</h2>
+  <p class="section-desc">請將下方 8 碼「交付碼」與下載之 JSON 資料檔一併交給測試人員。</p>
+  <div style="background:var(--bg-subtle); border:1.5px dashed var(--text-main); border-radius:12px; padding:12px; text-align:center; margin-bottom:12px;">
+   <div style="font-size:12px; color:var(--text-secondary);">您的 8 碼完整性交付碼（請回報給測試人員）</div>
+   <div id="result-delivery-code" style="font-size:24px; font-weight:800; letter-spacing:3px; margin:4px 0; font-family:monospace;">--------</div>
+   <div id="result-algo-note" style="font-size:11px; color:var(--text-muted);">雜湊演算法：SHA-256</div>
+  </div>
+  <div style="padding:9px 11px; border-radius:10px; background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); font-size:12.5px; margin-bottom:12px;">
+   <strong>下載前提示：</strong>此資料檔案包含您的政治立場回答與在模擬環境中發表的留言內容（不含姓名、Email、IP 或裝置識別碼）。
+  </div>
+  <div style="display:flex; flex-direction:column; gap:8px;">
+   <button type="button" class="btn-primary" id="btn-download-json">
+   ⬇ 下載資料檔 (<span id="download-filename-preview">study.json</span>)
+   </button>
+   <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+   <button type="button" class="btn-secondary" id="btn-share-json">📤 分享或傳送</button>
+   <button type="button" class="btn-secondary" id="btn-copy-json">📋 複製文字 (備用)</button>
+   </div>
+  </div>
+  <div id="delivery-action-toast" style="display:none; margin-top:8px; font-size:12.5px; font-weight:600; color:var(--ok-text); background:var(--ok-bg); padding:8px 10px; border-radius:8px;"></div>
+  </div>
+  <!-- 事後說明 (Debriefing & 各篇正確數字對照) -->
+  <div class="section-card">
+  <span class="card-step-tag">事後說明與事實查核對照</span>
+  <h3 class="section-title">研究事後說明（Debriefing）</h3>
+  <div id="debrief-content-box" style="font-size:13.5px; line-height:1.6; color:var(--text-main);"></div>
+  </div>
+  <!-- 感受長條圖與全部回答摘要 -->
+  <div class="section-card">
+  <span class="card-step-tag">作答摘要與感受長條圖</span>
+  <h3 class="section-title">各篇貼文感受分數 (1=最舒服，7=最不舒服)</h3>
+  <div id="result-feeling-chart"></div>
+  <div id="result-answers-summary" style="margin-top:12px; font-size:13px;"></div>
+  </div>
+  <!-- 停留時間統計摘要 -->
+  <div class="section-card">
+  <span class="card-step-tag">停留時間紀錄</span>
+  <h3 class="section-title">各畫面與各貼文前景停留時間</h3>
+  <div id="result-dwell-summary" style="font-size:13px;"></div>
+  </div>
+ </section>
+ </main>
+ <!-- 底部導覽列 (僅有外觀，符合第 3 節規格) -->
+ <nav class="bottom-nav" aria-label="底部裝飾導覽列" aria-hidden="true">
+ <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L3 10v11h6v-7h6v7h6V10L12 3z"/></svg>
+ <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+ <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>
+ <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+ <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+ </nav>
+</div>
+<!-- S7 送出確認對話框 (三層確認之第三層) -->
+<div class="modal-backdrop" id="modal-submit-s7" role="dialog" aria-modal="true" aria-labelledby="modal-s7-title">
+ <div class="modal-card">
+ <h3 id="modal-s7-title" style="margin:0 0 8px 0; font-size:18px;">送出後無法再修改，確定嗎？</h3>
+ <p style="margin:0 0 16px 0; font-size:13.5px; color:var(--text-secondary);">
+  按下「確定送出」後將鎖定所有回答並產生研究資料檔與 8 碼交付碼，無法再返回修改。
+ </p>
+ <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+  <button type="button" class="btn-secondary" id="btn-cancel-s7">返回檢查</button>
+  <button type="button" class="btn-primary" id="btn-confirm-s7">確定送出</button>
+ </div>
+ </div>
+</div>
+<!-- 研究者模式 (#researcher) 介面：受試者模式介面上不放入口 -->
+<div class="researcher-panel" id="researcher-shell">
+ <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; border-bottom:1px solid var(--border-color); padding-bottom:14px;">
+ <div>
+  <span class="sim-badge">Threads 模擬環境 v1.0</span>
+  <h1 style="margin:6px 0 2px 0; font-size:22px;">研究者資料驗證與統計分析模式 (<code>#researcher</code>)</h1>
+  <div style="font-size:13px; color:var(--text-secondary);">全部資料皆於本機瀏覽器內運算與驗證，無任何對外網路請求。</div>
+ </div>
+ <div style="display:flex; gap:8px; flex-wrap:wrap;">
+  <label class="btn-primary" style="width:auto; cursor:pointer;">
+  📂 匯入 JSON 資料檔 (可多選)
+  <input type="file" id="res-file-input" accept=".json,application/json" multiple style="display:none;">
+  </label>
+  <button type="button" class="btn-secondary" id="btn-res-load-demo">🧪 載入 12 份模擬驗收樣本 (含異常/竄改案例)</button>
+  <button type="button" class="btn-secondary" id="btn-res-clear">清空列表</button>
+ </div>
+ </div>
+ <div class="res-grid" id="res-kpi-cards">
+ <div class="section-card" style="margin:0;">
+  <div style="font-size:12px; color:var(--text-secondary);">已匯入資料檔總數</div>
+  <div id="res-count-total" style="font-size:26px; font-weight:800;">0</div>
+ </div>
+ <div class="section-card" style="margin:0;">
+  <div style="font-size:12px; color:var(--text-secondary);">通過完整性與條件驗證</div>
+  <div id="res-count-valid" style="font-size:26px; font-weight:800;">0</div>
+ </div>
+ <div class="section-card" style="margin:0;">
+  <div style="font-size:12px; color:var(--text-secondary);">警示／異常檔案數 (檢查碼不符/重複/過快/同值)</div>
+  <div id="res-count-flagged" style="font-size:26px; font-weight:800;">0</div>
+ </div>
+ <div class="section-card" style="margin:0; display:flex; flex-direction:column; justify-content:center; gap:8px;">
+  <button type="button" class="btn-primary" id="btn-export-long-csv" disabled style="min-height:38px; font-size:13.5px;">⬇ 匯出長表 CSV (受試者 × 貼文)</button>
+  <button type="button" class="btn-secondary" id="btn-export-wide-csv" disabled style="min-height:38px; font-size:13.5px;">⬇ 匯出寬表 CSV (一人一列)</button>
+ </div>
+ </div>
+ <h2 class="section-title">1. 受試者名冊與完整性驗證結果</h2>
+ <div class="res-table-wrap">
+ <table class="res-table" id="res-table-roster">
+  <thead>
+  <tr>
+   <th>檔名</th>
+   <th>受試者編號</th>
+   <th>貼文順序</th>
+   <th>前測立場</th>
+   <th>後測立場</th>
+   <th>有效前景時間</th>
+   <th>交付碼 (8碼)</th>
+   <th>檢查碼演算法</th>
+   <th>驗證狀態與標記</th>
+  </tr>
+  </thead>
+  <tbody><tr><td colspan="9" style="text-align:center; color:var(--text-secondary);">請匯入受試者 JSON 資料檔或點擊「載入 12 份模擬驗收樣本」</td></tr></tbody>
+ </table>
+ </div>
+ <h2 class="section-title">2. 各貼文感受平均與標準差（依原先政治立場分組）</h2>
+ <div class="res-table-wrap">
+ <table class="res-table" id="res-table-feeling-by-stance">
+  <thead>
+  <tr>
+   <th>貼文編號與主題</th>
+   <th>全體平均 (SD)</th>
+   <th>國民黨 (M / SD)</th>
+   <th>民進黨 (M / SD)</th>
+   <th>台灣民眾黨 (M / SD)</th>
+   <th>其他 (M / SD)</th>
+   <th>無政治立場 (M / SD)</th>
+   <th>不願回答 (M / SD)</th>
+  </tr>
+  </thead>
+  <tbody><tr><td colspan="8" style="text-align:center; color:var(--text-secondary);">尚無資料</td></tr></tbody>
+ </table>
+ </div>
+ <h2 class="section-title">3. 留言展開率、首次展開延遲中位數與留言回覆率</h2>
+ <div class="res-table-wrap">
+ <table class="res-table" id="res-table-engagement">
+  <thead>
+  <tr>
+   <th>貼文編號與主題</th>
+   <th>點名強度</th>
+   <th>貼文可見時間平均 (ms)</th>
+   <th>留言展開率 (%)</th>
+   <th>首次展開延遲中位數 (ms)</th>
+   <th>留言區展開時間平均 (ms)</th>
+   <th>受試者留言回覆率 (%)</th>
+   <th>作答耗時平均 (ms)</th>
+  </tr>
+  </thead>
+  <tbody><tr><td colspan="8" style="text-align:center; color:var(--text-secondary);">尚無資料</td></tr></tbody>
+ </table>
+ </div>
+ <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap:16px;">
+ <div>
+  <h2 class="section-title">4. 各畫面停留時間統計 (S1–S8)</h2>
+  <div class="res-table-wrap">
+  <table class="res-table" id="res-table-screen-dwell">
+   <thead>
+   <tr>
+    <th>畫面</th>
+    <th>平均可見時間 (ms)</th>
+    <th>中位數 (ms)</th>
+    <th>標準差 (ms)</th>
+    <th>平均進入次數</th>
+   </tr>
+   </thead>
+   <tbody><tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">尚無資料</td></tr></tbody>
+  </table>
+  </div>
+ </div>
+ <div>
+  <h2 class="section-title">5. 前後測政治立場變動表 (原先立場 × 目前立場)</h2>
+  <div class="res-table-wrap">
+  <table class="res-table" id="res-table-stance-matrix">
+   <thead>
+   <tr>
+    <th>原先 ＼ 目前</th>
+    <th>國民黨</th>
+    <th>民進黨</th>
+    <th>民眾黨</th>
+    <th>其他</th>
+    <th>無立場</th>
+    <th>不願回答</th>
+    <th>變動人數</th>
+   </tr>
+   </thead>
+   <tbody><tr><td colspan="8" style="text-align:center; color:var(--text-secondary);">尚無資料</td></tr></tbody>
+  </table>
+  </div>
+ </div>
+ </div>
+ <h2 class="section-title">6. 受試者留言內容清單</h2>
+ <div class="res-table-wrap">
+ <table class="res-table" id="res-table-comments-list">
+  <thead>
+  <tr>
+   <th>受試者編號</th>
+   <th>原先立場</th>
+   <th>貼文</th>
+   <th>回覆對象</th>
+   <th>留言內容</th>
+   <th>送出時間 (ms)</th>
+   <th>狀態</th>
+  </tr>
+  </thead>
+  <tbody><tr><td colspan="7" style="text-align:center; color:var(--text-secondary);">尚無受試者留言紀錄</td></tr></tbody>
+ </table>
+ </div>
+</div>
+<script>
+ /* =========================================================================
+ * 1. CONFIG 設定區 (時間參數、功能開關、同意書與事後說明文字、編號格式)
+ * ========================================================================= */
+ const CONFIG = {
+ version: 'v1.0',
+ specDate: '2026-10-18',
+ participantIdPattern: /^P(00[1-9]|0[1-9]\d|[1-9]\d{2})$/i,
+ participantIdFormatHint: 'P001–P999（例如 P001 為奇數台北先；P002 為偶數新北先）',
+ timing: {
+  initialCommentCount: 10,               // 每篇貼文原本即存在 10 則留言，後續慢慢新增至 15 則
+  postEnterToTypingMs: [500, 1500],      // 貼文 60% 進入畫面 → 顯示「…」再快 0.5 秒 (0.5–1.5 秒)
+  typingToFirstCommentMs: [1500, 4500],  // 「…」→ 新增第 11 則留言再快 0.5 秒 (1.5–4.5 秒)
+  betweenCommentsMs: [700, 4000],        // 之後每則新增留言間隔再快 0.5 秒 (0.7–4.0 秒)
+  lastCommentToFeelingMs: 500            // 最後一則出現 → 感受題浮現再快 0.5 秒 (0.5 秒)
+ },
+ features: {
+  enablePostTest: true,        // 後測立場題：預設開
+  enableSourceQuestion: true,  // 感受來源選填題：預設開
+  enableCommentRetract: true   // 留言撤回：預設開
+ },
+ validation: {
+  minValidTotalMs: 45000       // 研究者模式驗證異常快速門檻 (毫秒)
+ },
+ stanceOptions: [
+  '國民黨',
+  '民進黨',
+  '台灣民眾黨',
+  '其他',
+  '無政治立場',
+  '不願回答'
+ ],
+ feelingSources: [
+  '貼文內容',
+  '留言區',
+  '候選人',
+  '其他'
+ ],
+ consentText: [
+  '【學術研究知情同意書（模擬社群瀏覽研究）】',
+  '1. 研究目的：本研究旨在了解使用者瀏覽社群平台（Threads 模擬環境）公共議題貼文與留言互動時的閱讀感受與瀏覽行為。',
+  '2. 作答流程：您將先填寫原先的政治立場與受試者編號，接著依序瀏覽 6 篇經過改寫之地方選情相關貼文（可自由展開留言或發表留言），並在每篇貼文後填寫 1–7 分之感受題，最後進行後測與回顧確認。',
+  '3. 隱私與資料回收（B 方案）：本網站完全不連網、不載入外部資源，亦不收集姓名、Email、IP 或裝置識別碼。作答完成後，系統將於本機產生一份匿名 JSON 資料檔與 8 碼交付碼，由您主動下載並交給測試人員。',
+  '4. 自主參與權益：您可隨時停止作答或於回顧頁修改回答、撤回留言。勾選下方同意欄即代表您已閱讀並同意參與本研究。'
+ ].join('\n\n'),
+ debriefHtml: `
+  <p style="margin-top:0;">感謝您參與本次社群媒體模擬瀏覽研究！本模擬環境中的貼文改寫自 2026 年真實新聞事件，但<strong>所有發文帳號與每篇貼文下的 15 則網友留言皆為研究設計之虛構內容</strong>。</p>
+  <p>為探討社群留言區中「數字類錯誤資訊」與「點名互動機制（不點名／半點名／直接點名 <code>@you</code>）」對閱聽人感受的影響，每篇貼文留言區均包含 2 則針對數字、人數或金額誤讀的留言。以下為各篇貼文之<strong>正確事實與數字對照表</strong>：</p>
+  <ul style="padding-left:18px; margin:8px 0;">
+  <li style="margin-bottom:6px;"><strong>台北貼文 1（台北市長登記與辯論）：</strong>實際完成 2026 台北市長參選登記共 <strong>6 人</strong>（包含蔣萬安、沈伯洋等 6 位參選人），並於 10 月 15 日協商敲定電視辯論；留言中稱「只有 3 人登記」為錯誤數字刺激。</li>
+  <li style="margin-bottom:6px;"><strong>台北貼文 2（趙少康專訪沈伯洋）：</strong>趙少康於 2026 年 10 月 7 日（電視）與 10 月 14 日（廣播）八天內共 <strong>兩度（2 次）</strong>專訪沈伯洋；留言中稱「專訪了三次」為錯誤數字刺激。</li>
+  <li style="margin-bottom:6px;"><strong>台北貼文 3（「台北大洋流」車隊掃街）：</strong>沈伯洋 10 月 11 日首場車掃約逾 2,000 輛機車參與，陣營稱內部民調差距縮至個位數；留言中將街訪人數或車隊人數誇大／縮小誤讀屬以偏概全之錯誤刺激。</li>
+  <li style="margin-bottom:6px;"><strong>新北貼文 4（蘇巧慧早產兒家庭照顧津貼）：</strong>蘇巧慧提出之早產兒家庭照顧津貼為 <strong>3 萬元</strong>；留言中稱「津貼是 30 萬」為金額誤讀之錯誤刺激。</li>
+  <li style="margin-bottom:6px;"><strong>新北貼文 5（李四川三項市政政見）：</strong>貼文整理李四川提出之軌道建設、都更、勞工政策共 <strong>三項（3 項）</strong>政見主軸；留言中稱「提出了五項政見」為數量誤讀之錯誤刺激。</li>
+  <li style="margin-bottom:6px;"><strong>新北貼文 6（國策智庫 7 月新北民調）：</strong>新台灣國策智庫 7 月民調結果為<strong>蘇巧慧 40.2%、李四川 40.0%、未表態 19.8%</strong>（蘇巧慧微幅領先 0.2 個百分點）；留言中稱「李四川 40.0% 領先」及「19.8% 是其他候選人得票」皆為誤讀刺激。</li>
+  </ul>
+  <p style="margin-bottom:0; color:var(--text-secondary); font-size:12.5px;">請勿將本模擬環境畫面截圖外流，以免虛構留言被誤認為真實網路輿論。</p>
+ `
+ };
+ /* =========================================================================
+ * 2. POSTS 資料區 (集中於檔案開頭；類型標籤 type 與正解備註 correctFactNote
+ *    只存在此資料區，嚴禁輸出至頁面 DOM)
+ * ========================================================================= */
+ const POSTS = [
+ {
+  id: 1,
+  region: '台北',
+  topicShort: '蔣萬安勾選辯論有望同台沈伯洋',
+  mentionType: 'none',
+  mentionLabel: '不點名',
+  authorName: '台北市政觀測站',
+  authorHandle: 'tpe_civic_watch',
+  avatarId: 1,
+  timeLabel: '2小時',
+  dataDate: '2026-10-15',
+  correctFactNote: '正解備註：2026年台北市長選舉實際共有6人完成參選登記（含蔣萬安、沈伯洋等6人），且雙方陣營於2026-10-15二次協商敲定10月31日電視辯論。錯誤刺激留言將登記人數誤讀為「只有3人登記」。',
+  content: '【市政焦點｜資料日期：2026-10-15】台北市長選戰進入政見交鋒階段。爭取連任的蔣萬安於參選登記時表態勾選同意電視辯論選項，經過雙方幕僚二次協商，有望與民進黨參選人沈伯洋同台進行市政辯論。本次台北市長選舉共有 6 人完成參選登記，市民關注各陣營在都更、交通與社福政策上的具體攻防。',
+  infographicType: 'tpe_debate_6candidates',
+  initialLikes: 184,
+  comments: [
+  { id: 'p1_c1', authorName: '阿哲', handle: 'zhe_tpe01', avatarId: 7, type: 'rational_support', replyTo: null, text: '願意勾選辯論值得肯定，不管是現任市長還是挑戰者，把過去四年的市政數據跟未來藍圖攤開來公開檢驗，對台北市民最公平。' },
+  { id: 'p1_c2', authorName: '林小安', handle: 'ann_lin88', avatarId: 8, type: 'emotional', replyTo: null, text: '每次到了選舉前才在那邊吵辯論幾場，平常通勤塞車跟高房價的問題到底誰真的解決了？看媒體天天洗版真的很煩躁！' },
+  { id: 'p1_c3', authorName: '凱文看市政', handle: 'kevin_metro', avatarId: 9, type: 'rational_oppose', replyTo: null, text: '光勾選辯論還不夠，重點是交叉詰問的時間夠不夠長。如果只是各自念稿報告政績、沒有針對爭議問題正面回答，效果還是有限。' },
+  { id: 'p1_c4', authorName: '北投老張', handle: 'beitou_chang', avatarId: 10, type: 'fact_error', replyTo: null, text: '剛看了一下新聞數字，這次台北市長只有 3 人登記參選而已，名額這麼少乾脆直接辦兩場辯論很快就講完了吧。' },
+  { id: 'p1_c5', authorName: 'Mia Chen', handle: 'mia_chen_tw', avatarId: 11, type: 'rational_support', replyTo: null, text: '沈伯洋跟蔣萬安背景完全不同，一個從國會轉戰市政、一個有現任執政優勢，同台辯論剛好能讓中間選民比較兩邊的政策可行性。' },
+  { id: 'p1_c6', authorName: '宵夜吃什麼', handle: 'night_foodie', avatarId: 12, type: 'off_topic', replyTo: null, text: '歪樓問一下，大家覺得大安區附近晚上十點後還有哪家好吃的滷肉飯或清粥小菜嗎？剛加班完好餓。' },
+  { id: 'p1_c7', authorName: '大安通勤族', handle: 'daan_commute', avatarId: 13, type: 'sarcasm', replyTo: null, text: '哇，終於要同台了嗎？希望到時候不要變成大型讀稿機比賽，誰先把口號背完誰就贏喔。' },
+  { id: 'p1_c8', authorName: '阿宏', handle: 'hong_1992', avatarId: 14, type: 'fact_error', replyTo: null, text: '對啊我也看到只有 3 人登記參選台北市長，扣掉兩大黨就只剩 1 個人登記，今年參選人數也太冷清了吧。' },
+  { id: 'p1_c9', authorName: '佳佳', handle: 'chia_chia_05', avatarId: 15, type: 'emotional', replyTo: null, text: '留言區一堆人連文章都沒看完就在那邊帶風向，現在社群平台討論公共議題的風氣真的讓人越看越無力！' },
+  { id: 'p1_c10', authorName: '信義工程師', handle: 'xinyi_dev', avatarId: 16, type: 'rational_oppose', replyTo: null, text: '其實單一場電視辯論很難涵蓋所有市政細節，如果沒有把其他幾位完成登記的無黨籍或小黨參選人立場也納入公共討論，資訊還是不夠多元。' },
+  { id: 'p1_c11', authorName: '吐司邊不切', handle: 'toast_crust', avatarId: 17, type: 'sarcasm', replyTo: null, text: '反正辯論結束隔天，各家電視台跟名嘴還是會各自宣布自己支持的人大獲全勝啦，劇本都寫好了。' },
+  { id: 'p1_c12', authorName: '內湖小資女', handle: 'neihu_ol', avatarId: 18, type: 'emotional', replyTo: null, text: '每天滑手機都是選舉新聞，名嘴吵完換網友吵，整個社會氣氛緊繃成這樣到底什麼時候才能平靜一點？' },
+  { id: 'p1_c13', authorName: '士林阿瑋', handle: 'shilin_wei', avatarId: 19, type: 'rational_support', replyTo: null, text: '不管是都更程序縮短還是臨托政策，有公開辯論留下逐字紀錄，選後市民才有明確依據可以監督當選人有沒有兌現承諾。' },
+  { id: 'p1_c14', authorName: '週末想露營', handle: 'camp_lover', avatarId: 20, type: 'off_topic', replyTo: null, text: '這週末台北天氣好像會轉涼，有人知道陽明山擎天崗那邊現在芒草開了嗎？想帶家人去走走。' },
+  { id: 'p1_c15', authorName: '小魚', handle: 'fish_talk99', avatarId: 21, type: 'emotional', replyTo: null, text: '看到大家為了政治吵成一團真的很心累，難道不能就事論事好好看政策內容嗎？' }
+  ]
+ },
+ {
+  id: 2,
+  region: '台北',
+  topicShort: '趙少康專訪沈伯洋引發藍營討論',
+  mentionType: 'semi',
+  mentionLabel: '半點名',
+  authorName: '媒體與公共論壇筆記',
+  authorHandle: 'media_forum_tw',
+  avatarId: 2,
+  timeLabel: '3小時',
+  dataDate: '2026-10-17',
+  correctFactNote: '正解備註：趙少康於2026年10月7日（電視節目）與10月14日（廣播節目）八天內共「兩度（2次）」專訪沈伯洋。錯誤刺激留言誤讀為「專訪了三次」。第9則為半點名留言，回覆第4則錯誤留言並詢問「有人能確認嗎？」。',
+  content: '【媒體觀察｜資料日期：2026-10-17】資深媒體人趙少康近期於 10 月 7 日電視政論節目及 10 月 14 日廣播節目中，八天內兩度專訪民進黨台北市長參選人沈伯洋，節目播出後創下高點閱，但也引發藍營內部不同意見討論。支持跨陣營對話者認為媒體本應邀訪各黨參選人，批評者則質疑選戰期間頻繁專訪對手陣營人選的時機。',
+  infographicType: 'tpe_interview_twice',
+  initialLikes: 239,
+  comments: [
+  { id: 'p2_c1', authorName: '新聞系學生', handle: 'journo_stu', avatarId: 22, type: 'rational_support', replyTo: null, text: '政論與廣播節目邀請不同黨派的候選人接受專訪本來就是媒體常態，讓選民直接聽受訪者怎麼回應尖銳提問，比同溫層自說自話好多了。' },
+  { id: 'p2_c2', authorName: '松江路上班族', handle: 'songjiang_worker', avatarId: 23, type: 'emotional', replyTo: null, text: '連上個節目接受訪問都能鬧成黨內風波，現在政壇真的什麼事情都要無限上綱到陣營對立，看了實在很倒胃口！' },
+  { id: 'p2_c3', authorName: '老台北觀察家', handle: 'old_taipei_view', avatarId: 24, type: 'rational_oppose', replyTo: null, text: '跨陣營專訪當然可以做，但如果在短短一週多內密集安排同一位參選人上節目，卻還沒平衡邀訪其他參選人，難免會讓基層支持者產生疑慮。' },
+  { id: 'p2_c4', authorName: '阿泰', handle: 'tai_news_fan', avatarId: 25, type: 'fact_error', replyTo: null, text: '短短一個禮拜內趙少康已經專訪了三次沈伯洋耶！連續專訪三次的頻率真的太誇張了，難怪內部會吵翻天。' },
+  { id: 'p2_c5', authorName: '文山區居民', handle: 'wenshan_resident', avatarId: 26, type: 'rational_support', replyTo: null, text: '其實看完整段訪談，主持人也有問到都更跟兩岸立場等敏感題目，受訪者願意去非友好的頻道說明政策，對增加公共討論深度是正面的。' },
+  { id: 'p2_c6', authorName: '爆米花準備好', handle: 'popcorn_ready', avatarId: 27, type: 'sarcasm', replyTo: null, text: '流量密碼被發現了啦！原來只要請對手來上節目，收視率跟點閱率馬上衝高，這波操作根本雙贏吧。' },
+  { id: 'p2_c7', authorName: '貓奴日常', handle: 'cat_servant_tw', avatarId: 28, type: 'off_topic', replyTo: null, text: '有人今天早上搭捷運文湖線也遇到列車稍微延誤嗎？差點遲到嚇死我了。' },
+  { id: 'p2_c8', authorName: '中山區阿敏', handle: 'zhongshan_min', avatarId: 29, type: 'fact_error', replyTo: null, text: '對啊，貼文上面寫已經專訪了三次，電視兩次加廣播一次共三次，這在選前真的很少見。' },
+  { id: 'p2_c9', authorName: '求真路人', handle: 'fact_checker_lee', avatarId: 30, type: 'rational_oppose', replyTo: 'tai_news_fan', text: '@tai_news_fan 你說已經專訪了三次，但貼文內文好像不是這樣寫的，到底是兩次還是三次，有人能確認嗎？' },
+  { id: 'p2_c10', authorName: '厭世社畜', handle: 'tired_worker_88', avatarId: 31, type: 'emotional', replyTo: null, text: '不管是藍的還是綠的名嘴，每天在電視上吵這些枝微末節的事，一般老百姓的薪水跟物價根本沒人關心！' },
+  { id: 'p2_c11', authorName: '鍵盤評論員', handle: 'keyboard_critic', avatarId: 32, type: 'sarcasm', replyTo: null, text: '現在連當節目主持人訪問誰都要先問過黨中央同意喔？那乾脆以後政論節目都改播政令宣導片算了。' },
+  { id: 'p2_c12', authorName: '政大旁聽生', handle: 'nccu_listener', avatarId: 1, type: 'rational_support', replyTo: null, text: '如果蔣萬安接下來也上同一個節目接受專訪，讓兩位主要參選人在相同標準下受訪，爭議自然就會平息了。' },
+  { id: 'p2_c13', authorName: '南港阿翔', handle: 'nangang_hsiang', avatarId: 2, type: 'emotional', replyTo: null, text: '看到留言區連專訪幾次都能吵起來，現在網路資訊真的亂七八糟，大家講話都不先看清楚原文的嗎？' },
+  { id: 'p2_c14', authorName: '手搖飲半糖少冰', handle: 'boba_half_sugar', avatarId: 3, type: 'off_topic', replyTo: null, text: '這幾天秋老虎還是有點熱，推薦大家喝四季春加珍波椰，下午上班瞬間清醒。' },
+  { id: 'p2_c15', authorName: 'Cathy Wu', handle: 'cathy_wu_tpe', avatarId: 4, type: 'emotional', replyTo: null, text: '選戰才剛進十月就已經這麼多口水戰，想到接下來還有一個多月要被這些新聞轟炸就好焦慮。' }
+  ]
+ },
+ {
+  id: 3,
+  region: '台北',
+  topicShort: '台北大洋流車隊掃街與內部民調差距',
+  mentionType: 'direct',
+  mentionLabel: '直接點名',
+  authorName: '都會選情脈動',
+  authorHandle: 'metro_pulse_2026',
+  avatarId: 3,
+  timeLabel: '4小時',
+  dataDate: '2026-10-18',
+  correctFactNote: '正解備註：沈伯洋於10月11日舉行首場「台北大洋流」車隊掃街（報導逾2,000輛機車隨行，10月18日舉行第二場），陣營稱內部民調差距拉近至個位數（另有街訪樣本63人）。錯誤刺激留言將車隊或街訪人數誤讀誇大/以偏概全。第10則為直接點名留言，指向第4則錯誤留言並標記「@you 你怎麼看？」。',
+  content: '【選情動態｜資料日期：2026-10-18】民進黨台北市長參選人沈伯洋近期啟動「台北大洋流」車隊掃街活動，10 月 11 日首場吸引超過 2,000 輛機車隨行，10 月 18 日再推進至松山信義區；陣營同時表示內部民調雙方差距已縮小至個位數。不過藍營方面則認為現任市政穩定度仍具領先優勢，街頭造勢熱度是否能轉化為實際選票仍有待觀察。',
+  infographicType: 'tpe_motorcade_poll',
+  initialLikes: 312,
+  comments: [
+  { id: 'p3_c1', authorName: '大同區阿良', handle: 'datong_liang', avatarId: 5, type: 'rational_support', replyTo: null, text: '車隊掃街能號召到兩千多輛機車自主跟隨，確實展現出滿強的基層動員力，對拉抬選戰討論度跟志工士氣很有幫助。' },
+  { id: 'p3_c2', authorName: '統計學助教', handle: 'stat_ta_tw', avatarId: 6, type: 'rational_oppose', replyTo: null, text: '各陣營自己公布的「內部民調」通常沒公開完整抽樣方法、市話與手機比例及拒訪率，差距是不是真的縮到個位數還是要看多家第三方機構的長期趨勢。' },
+  { id: 'p3_c3', authorName: '萬華居民', handle: 'wanhua_local', avatarId: 7, type: 'emotional', replyTo: null, text: '週末假日車隊掃街沿路按喇叭跟廣播真的很吵！就不能用比較不打擾住戶休息的方式拜票嗎？' },
+  { id: 'p3_c4', authorName: '阿凱', handle: 'kai_watch_88', avatarId: 8, type: 'fact_error', replyTo: null, text: '貼文寫首場只有 200 輛機車參加而已，而且那個民調只是在路口隨便問 20 個路人就算數，這樣就說全市差距個位數也太以偏概全了吧！' },
+  { id: 'p3_c5', authorName: '松山小陳', handle: 'songshan_chen', avatarId: 9, type: 'rational_support', replyTo: null, text: '除了車隊掃街之外，最近幾場公園肥皂箱開講跟政見發表會也滿多市民去聽的，至少有把都更跟社福議題帶出來討論。' },
+  { id: 'p3_c6', authorName: '吃瓜群眾一號', handle: 'melon_eater01', avatarId: 10, type: 'sarcasm', replyTo: null, text: '每到選舉每個陣營的「內部民調」都馬說自己快追平或是穩贏，選舉三大幻覺之一果然名不虛傳。' },
+  { id: 'p3_c7', authorName: '機車族日常', handle: 'scooter_daily', avatarId: 11, type: 'off_topic', replyTo: null, text: '講到機車，台北最近好多路段改成科技執法，大家轉彎跟待轉真的要注意標線，荷包傷不起。' },
+  { id: 'p3_c8', authorName: '中正區王先生', handle: 'wang_zz_tpe', avatarId: 12, type: 'fact_error', replyTo: null, text: '我看上面說一場車隊掃街就有 20 萬輛機車上街把整個台北塞爆，民調還反超領先 15%，這數字聽起來超離譜。' },
+  { id: 'p3_c9', authorName: '理性選民', handle: 'voter_rational', avatarId: 13, type: 'rational_oppose', replyTo: null, text: '造勢場的人氣跟最終投票率不一定成正比，台北市中間選民比例高，最後一個月還是要看辯論會表現跟具體市政政見。' },
+  { id: 'p3_c10', authorName: '討論串路人甲', handle: 'passerby_alpha', avatarId: 14, type: 'emotional', replyTo: 'kai_watch_88', text: '剛剛看到 @kai_watch_88 說貼文寫只有 200 輛機車跟問 20 個路人，這跟貼文寫的數字差超多吧？ @you 你怎麼看？' },
+  { id: 'p3_c11', authorName: '酸民代表', handle: 'irony_king', avatarId: 15, type: 'sarcasm', replyTo: null, text: '太神啦，照這種每週民調拉近的速度算下去，投票前一天支持度應該會突破天際吧！' },
+  { id: 'p3_c12', authorName: '信義區媽媽', handle: 'xinyi_mom', avatarId: 16, type: 'emotional', replyTo: null, text: '每次看留言區大家為了民調數字吵得面紅耳赤就很感嘆，媒體整天報輸贏，真正攸關市民生活的政策反而沒人認真看。' },
+  { id: 'p3_c13', authorName: '小宇', handle: 'yu_taipei_26', avatarId: 17, type: 'emotional', replyTo: null, text: '網路討論區到處都是各說各話的數字，看得頭好痛，真的不知道該相信哪一邊講的。' },
+  { id: 'p3_c14', authorName: '咖啡成癮者', handle: 'coffee_addict_tw', avatarId: 18, type: 'off_topic', replyTo: null, text: '今天超商美式咖啡買二送二，大家記得去寄杯，週一上班必備良藥。' },
+  { id: 'p3_c15', authorName: '公館書蟲', handle: 'gongguan_reader', avatarId: 19, type: 'rational_support', replyTo: null, text: '不管民調差距幾趴，有競爭壓力才會逼出更好的市政牛肉，對台北市民來說兩邊都繃緊神經是好事。' }
+  ]
+ },
+ {
+  id: 4,
+  region: '新北',
+  topicShort: '蘇巧慧提出早產兒家庭津貼 3 萬元',
+  mentionType: 'none',
+  mentionLabel: '不點名',
+  authorName: '新北生活與社福筆記',
+  authorHandle: 'ntpc_welfare_note',
+  avatarId: 4,
+  timeLabel: '2小時',
+  dataDate: '2026-09-30',
+  correctFactNote: '正解備註：蘇巧慧提出之早產兒家庭照顧津貼為「3 萬元」（30,000元）。錯誤刺激留言將金額誤讀為「津貼是 30 萬」。本篇為不點名，無任何 @ 標記。',
+  content: '【社福政見｜資料日期：2026-09-30】針對年輕家庭育兒與特殊照護負擔，民進黨新北市長參選人蘇巧慧提出婦幼與社福升級政見，主張為早產兒家庭直接發放「家庭照顧津貼 3 萬元」，並搭配跨局處整合照護資源、喘息服務與兒童友善城市措施，盼減輕新手父母在醫療與居家照護期間的經濟壓力。',
+  infographicType: 'ntpc_preterm_30k',
+  initialLikes: 205,
+  comments: [
+  { id: 'p4_c1', authorName: '板橋雙寶媽', handle: 'banqiao_mom2', avatarId: 20, type: 'rational_support', replyTo: null, text: '家裡有過早產寶寶真的懂那種出院後的照護壓力，早產兒家庭照顧津貼 3 萬元雖然不能解決所有開銷，但對買專用配方奶跟醫療耗材是很實際的幫助。' },
+  { id: 'p4_c2', authorName: '新莊上班族', handle: 'xinzhuang_lee', avatarId: 21, type: 'rational_oppose', replyTo: null, text: '發放一次性津貼固然有幫助，但新北市更缺的是平價公托名額跟早療復健資源的排隊時間過長，制度面的長期支持比單次發錢更重要。' },
+  { id: 'p4_c3', authorName: '中和阿豪', handle: 'zhonghe_hao', avatarId: 22, type: 'fact_error', replyTo: null, text: '哇！貼文說早產兒家庭直接發「津貼是 30 萬」耶！一胎補助 30 萬元的話新北市政府財政怎麼可能負擔得起？' },
+  { id: 'p4_c4', authorName: '永和租屋族', handle: 'yonghe_renter', avatarId: 23, type: 'emotional', replyTo: null, text: '現在房價跟物價漲成這樣，年輕人連自己都快養不起了，每次看到各種育兒津貼新聞還是覺得離敢生小孩好遙遠，想到就嘆氣。' },
+  { id: 'p4_c5', authorName: '小兒科護理師', handle: 'peds_nurse_tw', avatarId: 24, type: 'rational_support', replyTo: null, text: '早產兒除了住院期間，返家後前幾個月父母常需要請假照顧，政見裡除了 3 萬元津貼還有提到喘息服務跟跨局處整合，方向是貼近臨床需求的。' },
+  { id: 'p4_c6', authorName: '三重老實人', handle: 'sanchong_guy', avatarId: 25, type: 'sarcasm', replyTo: null, text: '選舉到了支票隨便開囉，反正選前喊發錢大家最愛聽，預算從哪裡挪出來以後再說啦。' },
+  { id: 'p4_c7', authorName: '蘆洲吃貨', handle: 'luzhou_eater', avatarId: 26, type: 'off_topic', replyTo: null, text: '蘆洲切仔麵到底哪一家才是老店第一名？週末朋友來找我玩想帶他去吃。' },
+  { id: 'p4_c8', authorName: '土城阿慶', handle: 'tucheng_ching', avatarId: 27, type: 'fact_error', replyTo: null, text: '對啊，我也看到是發 30 萬津貼，一戶領 30 萬真的太多了，應該把預算分給所有一般新生兒家庭才對。' },
+  { id: 'p4_c9', authorName: '財政觀察者', handle: 'fiscal_watch', avatarId: 28, type: 'rational_oppose', replyTo: null, text: '建議候選人提出新增社福津貼時，應該一併公布預估受惠戶數與每年所需總經費，讓市民清楚評估財政永續性。' },
+  { id: 'p4_c10', authorName: '淡水通勤中', handle: 'tamsui_train', avatarId: 29, type: 'emotional', replyTo: null, text: '留言區有人連 3 萬跟 30 萬都看錯就在那邊大罵特罵，現在網路風氣真的讓人很無言，先看清楚內文有這麼難嗎？' },
+  { id: 'p4_c11', authorName: '冷眼旁觀', handle: 'cool_observer', avatarId: 30, type: 'sarcasm', replyTo: null, text: '只要政策名字加上「升級三箭」或「友善城市」，聽起來就好像所有育兒問題明天就會自動消失一樣呢。' },
+  { id: 'p4_c12', authorName: '新店林小姐', handle: 'xindian_ms_lin', avatarId: 31, type: 'rational_support', replyTo: null, text: '針對高風險或早產家庭提供精準補助，其實總預算規模可控，又能幫到真正急需支援的家庭，算是務實的社福政見。' },
+  { id: 'p4_c13', authorName: '樹林阿哲', handle: 'shulin_zhe', avatarId: 32, type: 'emotional', replyTo: null, text: '每次討論社福政策下面就會吵成一團，有小孩的跟沒小孩的互相抱怨，社會少一點對立多一點同理心不好嗎？' },
+  { id: 'p4_c14', authorName: '汐止雨傘王', handle: 'xizhi_umbrella', avatarId: 1, type: 'off_topic', replyTo: null, text: '汐止今天又開始飄雨了，除濕機開整天水箱還是滿的，大家家裡都買幾公升的除濕機啊？' },
+  { id: 'p4_c15', authorName: 'Emily Lin', handle: 'emily_lin_ntpc', avatarId: 2, type: 'emotional', replyTo: null, text: '看到很多留言根本沒認真看政見內容就在情緒發洩，老實說滑久了心情真的會變差。' }
+  ]
+ },
+ {
+  id: 5,
+  region: '新北',
+  topicShort: '李四川提出軌道建設、都更、勞工三項政見',
+  mentionType: 'semi',
+  mentionLabel: '半點名',
+  authorName: '雙北城市建設論壇',
+  authorHandle: 'twin_city_build',
+  avatarId: 5,
+  timeLabel: '3小時',
+  dataDate: '2026-09-19',
+  correctFactNote: '正解備註：貼文整理李四川提出「軌道建設、都更、勞工政策」共三項（3項）政見主軸。錯誤刺激留言誤讀為「提出了五項政見」。第9則為半點名留言，回覆第4則錯誤留言並詢問「有人能確認嗎？」。',
+  content: '【市政藍圖｜資料日期：2026-09-19】國民黨新北市長參選人李四川近期針對城市發展提出「軌道建設、都更、勞工政策」三項政見主軸：包括推動「軌道建設 123」打造 30 分鐘雙北核心生活圈、加速老舊社區防災都市更新，以及規劃勞工宅與落實勞工權益保障，訴求以工程與市政實務經驗推動新北轉型。',
+  infographicType: 'ntpc_sichuan_3policies',
+  initialLikes: 218,
+  comments: [
+  { id: 'p5_c1', authorName: '工程界老兵', handle: 'civil_eng_vet', avatarId: 3, type: 'rational_support', replyTo: null, text: '新北市老屋比例高、跨區通勤人口又多，把軌道建設、都更跟勞工居住政策這三項列為核心主軸，確實有抓到新北最迫切的硬體建設痛點。' },
+  { id: 'p5_c2', authorName: '都市計畫碩士生', handle: 'urban_plan_grad', avatarId: 4, type: 'rational_oppose', replyTo: null, text: '軌道建設跟都更大家都贊成，但關鍵在於財務自償率跟不同意戶協商機制。如果沒有提出具體的容積獎勵調整與法規配套，光靠工程經驗還是會卡關。' },
+  { id: 'p5_c3', authorName: '三峽通勤族', handle: 'sanxia_commuter', avatarId: 5, type: 'emotional', replyTo: null, text: '每天早上塞在高速公路跟轉乘捷運就花掉一個多小時，聽到30分鐘生活圈真的只希望趕快做好，不要再讓我們每天通勤折磨了！' },
+  { id: 'p5_c4', authorName: '阿斌', handle: 'bin_ntpc_09', avatarId: 6, type: 'fact_error', replyTo: null, text: '這篇貼文說李四川一口氣「提出了五項政見」，但五項政見裡居然完全沒提到都市更新，這樣老房子要怎麼改建？' },
+  { id: 'p5_c5', authorName: '永和住戶陳先生', handle: 'yonghe_chen', avatarId: 7, type: 'rational_support', replyTo: null, text: '永和大陳都更推動的經驗很關鍵，把勞工宅納入社宅與都更分回的規劃裡，對在新北打拚的基層勞工家庭很有吸引力。' },
+  { id: 'p5_c6', authorName: '口號翻譯機', handle: 'slogan_translator', avatarId: 8, type: 'sarcasm', replyTo: null, text: '「軌道建設123」聽起來超順口呢，下次要不要乾脆推出「都更456」跟「勞工789」湊成一組數字口訣？' },
+  { id: 'p5_c7', authorName: '林口風很大', handle: 'linkou_windy', avatarId: 9, type: 'off_topic', replyTo: null, text: '有人去逛過林口三井二期新開的那幾間餐廳嗎？週末去排隊大概要等多久？' },
+  { id: 'p5_c8', authorName: '泰山阿德', handle: 'taishan_de', avatarId: 10, type: 'fact_error', replyTo: null, text: '對啊，上面寫他提出了五項政見，結果五項裡面全都只講觀光跟農業，根本沒講到勞工政策吧。' },
+  { id: 'p5_c9', authorName: '認真看字的人', handle: 'careful_reader_tw', avatarId: 11, type: 'rational_oppose', replyTo: 'bin_ntpc_09', text: '@bin_ntpc_09 你說貼文寫提出了五項政見而且沒提都更，但我看貼文標題跟圖卡好像是寫三項政見（含都更），有人能確認嗎？' },
+  { id: 'p5_c10', authorName: '中和老住戶', handle: 'zhonghe_old', avatarId: 12, type: 'emotional', replyTo: null, text: '每次看到捷運施工圍籬一圍就是好幾年，交通黑暗期已經夠痛苦了，網路上還一堆人不看內文亂吵，真的很煩！' },
+  { id: 'p5_c11', authorName: '反串小隊長', handle: 'satire_capt', avatarId: 13, type: 'sarcasm', replyTo: null, text: '太棒了，以後全台灣每個縣市都主打「30分鐘生活圈」，連塞車等紅燈的時間都不用算進去喔！' },
+  { id: 'p5_c12', authorName: '板橋勞工代表', handle: 'banqiao_labor', avatarId: 14, type: 'rational_support', replyTo: null, text: '能把勞工政策單獨拉出來跟軌道、都更並列三大政見是好事，期待後續公布更細的勞工宅申請資格與租金標準。' },
+  { id: 'p5_c13', authorName: '新莊小雯', handle: 'xinzhuang_wen', avatarId: 15, type: 'emotional', replyTo: null, text: '不管誰提出政見，留言區總是先酸言酸語或看錯數字亂帶風向，台灣到底什麼時候才能有正常的政策討論環境？' },
+  { id: 'p5_c14', authorName: '週末去烘爐地', handle: 'hongludi_walk', avatarId: 16, type: 'off_topic', replyTo: null, text: '昨晚去中和烘爐地看夜景，天氣涼涼的視野超好，就是爬樓梯爬到小腿有點痠。' },
+  { id: 'p5_c15', authorName: 'Jason Huang', handle: 'jason_h_ntpc', avatarId: 17, type: 'emotional', replyTo: null, text: '看個市政新聞也要被情緒化的口水戰轟炸，現在滑社群平台真的越來越容易感到疲倦。' }
+  ]
+ },
+ {
+  id: 6,
+  region: '新北',
+  topicShort: '國策智庫 7 月民調：李四川 40.0%、蘇巧慧 40.2%',
+  mentionType: 'direct',
+  mentionLabel: '直接點名',
+  authorName: '民意調查資料中心',
+  authorHandle: 'poll_data_hub',
+  avatarId: 6,
+  timeLabel: '5小時',
+  dataDate: '2026-07-15',
+  correctFactNote: '正解備註：新台灣國策智庫2026年7月民調數據為「李四川 40.0%、蘇巧慧 40.2%、未表態 19.8%」，由蘇巧慧微幅領先 0.2 個百分點（誤差範圍內平手）。錯誤刺激留言誤讀為「李四川 40.0% 領先」及「19.8% 是其他候選人」。第10則為直接點名留言，指向第4則錯誤留言並標記「@you 你怎麼看？」。',
+  content: '【民調資料｜資料日期：2026-07-15】根據新台灣國策智庫於 7 月中旬公布之新北市長選舉民意調查，在藍綠對決情境下，國民黨李四川支持度為 40.0%，民進黨蘇巧慧支持度為 40.2%，雙方差距僅 0.2 個百分點（處於抽樣誤差範圍內），另有 19.8% 受訪市民表示尚未決定或未表態。分析指出，近兩成未表態選民將是左右新北選情的關鍵。',
+  infographicType: 'ntpc_july_poll',
+  initialLikes: 276,
+  comments: [
+  { id: 'p6_c1', authorName: '民調研究員', handle: 'poll_researcher', avatarId: 18, type: 'rational_support', replyTo: null, text: '40.0% 對 40.2% 只差 0.2 個百分點，在統計上完全屬於抽樣誤差範圍內的五五波，代表新北市選情確實非常膠著，雙方都有機會。' },
+  { id: 'p6_c2', authorName: '社會系大四生', handle: 'soc_senior_tw', avatarId: 19, type: 'rational_oppose', replyTo: null, text: '這是 7 月中旬做的民調資料，距離年底投票還有好幾個月，單看單一智庫在夏天的調查數據其實無法反映 10 月最新選情變化。' },
+  { id: 'p6_c3', authorName: '板橋阿智', handle: 'banqiao_zhi', avatarId: 20, type: 'emotional', replyTo: null, text: '每隔幾天就有一份不一樣的民調數字丟出來，一下子說差很多、一下子說平手，搞得選民眼花撩亂真的很煩！' },
+  { id: 'p6_c4', authorName: '阿傑看選情', handle: 'jay_election_99', avatarId: 21, type: 'fact_error', replyTo: null, text: '看這張圖很明顯是「李四川 40.0% 領先」蘇巧慧啊！而且剩下的「19.8% 是其他候選人」拿走的選票，第三勢力在這一局居然有將近兩成支持度！' },
+  { id: 'p6_c5', authorName: '中和中間選民', handle: 'zhonghe_indy', avatarId: 22, type: 'rational_support', replyTo: null, text: '將近 19.8% 的市民還沒決定投給誰，這表示新北市有將近兩成的選民在等著看兩位參選人後續提出的具體政見才做決定。' },
+  { id: 'p6_c6', authorName: '算數小天才', handle: 'math_genius_tw', avatarId: 23, type: 'sarcasm', replyTo: null, text: '差 0.2% 也能寫成一篇大新聞，民調機構的小數點真是全世界最精準的預言水晶球呢。' },
+  { id: 'p6_c7', authorName: '耶誕城受害者', handle: 'xmasland_traffic', avatarId: 24, type: 'off_topic', replyTo: null, text: '看到新北市就想到年底板橋耶誕城又要開始了，住板橋車站附近的人已經開始做好塞車兩個月的心理準備。' },
+  { id: 'p6_c8', authorName: '鶯歌小劉', handle: 'yingge_liu', avatarId: 25, type: 'fact_error', replyTo: null, text: '對啊，上面寫李四川 40.0% 領先，而且 19.8% 是其他候選人的得票率，加起來剛好 100%。' },
+  { id: 'p6_c9', authorName: '獨立評論人', handle: 'indie_comment', avatarId: 26, type: 'rational_oppose', replyTo: null, text: '看民調除了看支持度百分比，還要注意機構效應跟經費來源，把不同時期的多家民調放在一起看才不會被單一數據誤導。' },
+  { id: 'p6_c10', authorName: '疑問網友小陳', handle: 'question_chen', avatarId: 27, type: 'emotional', replyTo: 'jay_election_99', text: '等等，剛剛 @jay_election_99 說這份民調是「李四川 40.0% 領先」而且「19.8% 是其他候選人」，可是貼文寫蘇巧慧 40.2%、19.8% 是未表態耶！ @you 你怎麼看？' },
+  { id: 'p6_c11', authorName: '爆米花續杯', handle: 'popcorn_refill', avatarId: 28, type: 'sarcasm', replyTo: null, text: '只要遮住不想看的數字，每個人都可以宣布自己支持的候選人穩居第一名喔！' },
+  { id: 'p6_c12', authorName: '三重上班族', handle: 'sanchong_ol', avatarId: 29, type: 'emotional', replyTo: null, text: '連 40.0% 跟 40.2% 誰高誰低、還有未表態跟其他候選人都能看錯，留言區到底有多少人是沒看清楚就在亂留言的？' },
+  { id: 'p6_c13', authorName: '新店阿誠', handle: 'xindian_cheng', avatarId: 30, type: 'emotional', replyTo: null, text: '每天看這些民調數字上上下下，支持者互相叫陣，真的覺得整個社群環境充滿焦慮感。' },
+  { id: 'p6_c14', authorName: '週末逛老街', handle: 'oldstreet_walker', avatarId: 31, type: 'off_topic', replyTo: null, text: '這週末想帶爸媽去三峽老街買金牛角，大家推薦原味還是菠蘿口味啊？' },
+  { id: 'p6_c15', authorName: '瑞芳居民', handle: 'ruifang_local', avatarId: 32, type: 'rational_support', replyTo: null, text: '民調越接近，兩邊陣營就越不敢輕忽偏鄉跟各區的市政需求，希望兩位候選人多提出能打動這 19.8% 未表態市民的政策。' }
+  ]
+ }
+ ];
+ /* =========================================================================
+ * 3. 內嵌 SVG 系統：32 個程式化頭像、互動圖示、6 張資訊圖卡 (無真人照片/無政黨標誌)
+ * ========================================================================= */
+ const AVATAR_PALETTES = [
+ ['#e3f2fd', '#1565c0', '#64b5f6'], ['#fce4ec', '#ad1457', '#f06292'],
+ ['#e8f5e9', '#2e7d32', '#81c784'], ['#fff3e0', '#ef6c00', '#ffb74d'],
+ ['#f3e5f5', '#6a1b9a', '#ba68c8'], ['#e0f7fa', '#00838f', '#4dd0e1'],
+ ['#fbe9e7', '#d84315', '#ff8a65'], ['#ede7f6', '#4527a0', '#9575cd'],
+ ['#f1f8e9', '#558b2f', '#aed581'], ['#e8eaf6', '#283593', '#7986cb'],
+ ['#fff8e1', '#ff8f00', '#ffd54f'], ['#efebe9', '#4e342e', '#a1887f'],
+ ['#eceff1', '#37474f', '#90a4ae'], ['#e0f2f1', '#00695c', '#4db6ac'],
+ ['#fce4ec', '#880e4f', '#f48fb1'], ['#e1f5fe', '#0277bd', '#4fc3f7']
+ ];
+ function getAvatarSvg(avatarId, size = 34) {
+ const idx = Math.abs((Number(avatarId) || 0) - 1) % 32;
+ const pal = AVATAR_PALETTES[idx % AVATAR_PALETTES.length];
+ const variant = idx % 4;
+ let feature = '';
+ if (variant === 0) {
+  feature = `<path d="M9 12 C12 7, 24 7, 27 12" stroke="${pal[1]}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+ } else if (variant === 1) {
+  feature = `<rect x="10" y="13" width="6" height="4" rx="1" stroke="${pal[1]}" stroke-width="1.5" fill="none"/>
+    <rect x="20" y="13" width="6" height="4" rx="1" stroke="${pal[1]}" stroke-width="1.5" fill="none"/>
+    <line x1="16" y1="15" x2="20" y2="15" stroke="${pal[1]}" stroke-width="1.5"/>`;
+ } else if (variant === 2) {
+  feature = `<circle cx="18" cy="9" r="4.5" fill="${pal[2]}" opacity="0.65"/>`;
+ } else {
+  feature = `<path d="M11 10 L18 6 L25 10" stroke="${pal[1]}" stroke-width="2" fill="none" stroke-linejoin="round"/>`;
+ }
+ return `<svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect width="36" height="36" rx="18" fill="${pal[0]}"/>
+  <circle cx="18" cy="14.5" r="6" fill="${pal[1]}"/>
+  <path d="M7.5 31C9.5 24.8 13.2 22.2 18 22.2C22.8 22.2 26.5 24.8 28.5 31" fill="${pal[2]}"/>
+  ${feature}
+ </svg>`;
+ }
+ function getInfographicSvg(type) {
+ if (type === 'tpe_debate_6candidates') {
+  // 人數對照圖：2026 台北市長參選登記 6 人 vs 電視辯論同台
+  return `<svg width="100%" height="auto" preserveAspectRatio="xMidYMid meet" viewBox="0 0 340 168" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="2026台北市長參選登記6人與電視辯論資訊圖卡">
+  <rect width="340" height="168" fill="#182232"/>
+  <text x="16" y="26" fill="#90caf9" font-size="11" font-weight="700">台北市政焦點圖卡｜2026-10-15</text>
+  <text x="16" y="46" fill="#ffffff" font-size="14.5" font-weight="700">台北市長選舉：6 人完成登記・辯論會敲定</text>
+  <rect x="16" y="58" width="148" height="94" rx="10" fill="#233146" stroke="#394b65"/>
+  <text x="28" y="78" fill="#b0bec5" font-size="11.5">完成參選登記總人數</text>
+  <text x="28" y="110" fill="#ffffff" font-size="28" font-weight="800">6 人</text>
+  <g transform="translate(28, 120)">
+   <circle cx="8" cy="10" r="6.5" fill="#64b5f6"/><circle cx="26" cy="10" r="6.5" fill="#81c784"/>
+   <circle cx="44" cy="10" r="6.5" fill="#ffb74d"/><circle cx="62" cy="10" r="6.5" fill="#ba68c8"/>
+   <circle cx="80" cy="10" r="6.5" fill="#4dd0e1"/><circle cx="98" cy="10" r="6.5" fill="#90a4ae"/>
+  </g>
+  <rect x="176" y="58" width="148" height="94" rx="10" fill="#233146" stroke="#394b65"/>
+  <text x="188" y="78" fill="#b0bec5" font-size="11.5">電視辯論會協商進度</text>
+  <text x="188" y="102" fill="#fff59d" font-size="13.5" font-weight="700">蔣萬安 × 沈伯洋</text>
+  <text x="188" y="122" fill="#e0e0e0" font-size="11.5">登記時表態勾選辯論</text>
+  <text x="188" y="140" fill="#90caf9" font-size="11">定於 10/31 舉行電視辯論</text>
+  </svg>`;
+ }
+ if (type === 'tpe_interview_twice') {
+  // 專訪時序對照卡：趙少康八天內兩度專訪沈伯洋
+  return `<svg width="100%" height="auto" preserveAspectRatio="xMidYMid meet" viewBox="0 0 340 168" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="趙少康八天內兩度專訪沈伯洋時序圖卡">
+  <rect width="340" height="168" fill="#1f242d"/>
+  <text x="16" y="26" fill="#ffcc80" font-size="11" font-weight="700">媒體觀察圖卡｜2026-10-17</text>
+  <text x="16" y="46" fill="#ffffff" font-size="14.5" font-weight="700">趙少康 8 天內「兩度」專訪沈伯洋時序整理</text>
+  <line x1="36" y1="88" x2="304" y2="88" stroke="#546e7a" stroke-width="2.5" stroke-dasharray="4 4"/>
+  <rect x="20" y="64" width="138" height="84" rx="10" fill="#2b3240" stroke="#4f5b6e"/>
+  <text x="32" y="84" fill="#ffcc80" font-size="11.5" font-weight="700">第 1 次專訪｜10 月 7 日</text>
+  <text x="32" y="106" fill="#ffffff" font-size="13" font-weight="700">電視政論節目專訪</text>
+  <text x="32" y="126" fill="#b0bec5" font-size="11">跨陣營交鋒市政與國安議題</text>
+  <rect x="182" y="64" width="138" height="84" rx="10" fill="#2b3240" stroke="#4f5b6e"/>
+  <text x="194" y="84" fill="#80cbc4" font-size="11.5" font-weight="700">第 2 次專訪｜10 月 14 日</text>
+  <text x="194" y="106" fill="#ffffff" font-size="13" font-weight="700">廣播節目專訪</text>
+  <text x="194" y="126" fill="#b0bec5" font-size="11">累計共 2 次專訪引發內部討論</text>
+  </svg>`;
+ }
+ if (type === 'tpe_motorcade_poll') {
+  // 車隊掃街與民調趨勢圖卡
+  return `<svg width="100%" height="auto" preserveAspectRatio="xMidYMid meet" viewBox="0 0 340 168" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="台北大洋流車隊掃街與陣營內部民調差距圖卡">
+  <rect width="340" height="168" fill="#16262e"/>
+  <text x="16" y="26" fill="#80deea" font-size="11" font-weight="700">選情動態圖卡｜2026-10-18</text>
+  <text x="16" y="46" fill="#ffffff" font-size="14.5" font-weight="700">「台北大洋流」車隊掃街與陣營評估指標</text>
+  <rect x="16" y="58" width="146" height="94" rx="10" fill="#1f3642" stroke="#355668"/>
+  <text x="28" y="78" fill="#b0bec5" font-size="11.5">10/11 首場車隊規模</text>
+  <text x="28" y="108" fill="#4dd0e1" font-size="22" font-weight="800">2,000+ 輛</text>
+  <text x="28" y="128" fill="#e0e0e0" font-size="11.5">機車隨行（10/18 第二場）</text>
+  <rect x="174" y="58" width="150" height="94" rx="10" fill="#1f3642" stroke="#355668"/>
+  <text x="186" y="78" fill="#b0bec5" font-size="11.5">陣營公布內部民調差距</text>
+  <text x="186" y="108" fill="#fff59d" font-size="21" font-weight="800">縮至個位數</text>
+  <text x="186" y="128" fill="#e0e0e0" font-size="11.5">雙方差距拉近至 &lt; 10%</text>
+  </svg>`;
+ }
+ if (type === 'ntpc_preterm_30k') {
+  // 政見條列卡：蘇巧慧提出早產兒家庭津貼 3 萬元
+  return `<svg width="100%" height="auto" preserveAspectRatio="xMidYMid meet" viewBox="0 0 340 168" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="蘇巧慧早產兒家庭照顧津貼3萬元政見圖卡">
+  <rect width="340" height="168" fill="#231f2e"/>
+  <text x="16" y="26" fill="#ce93d8" font-size="11" font-weight="700">新北社福政見卡｜2026-09-30</text>
+  <text x="16" y="46" fill="#ffffff" font-size="14.5" font-weight="700">蘇巧慧：早產兒家庭支持與婦幼社福政見</text>
+  <rect x="16" y="58" width="308" height="46" rx="9" fill="#322c42" stroke="#53496b"/>
+  <text x="28" y="77" fill="#e1bee7" font-size="11.5" font-weight="700">核心補助項目</text>
+  <text x="28" y="96" fill="#ffffff" font-size="15" font-weight="800">早產兒家庭照顧津貼：每胎發給 3 萬元 (NT$30,000)</text>
+  <rect x="16" y="112" width="148" height="42" rx="8" fill="#2c273a"/>
+  <text x="26" y="137" fill="#cfd8dc" font-size="12">✓ 跨局處整合照護資源</text>
+  <rect x="176" y="112" width="148" height="42" rx="8" fill="#2c273a"/>
+  <text x="186" y="137" fill="#cfd8dc" font-size="12">✓ 家庭互助喘息服務升級</text>
+  </svg>`;
+ }
+ if (type === 'ntpc_sichuan_3policies') {
+  // 政見條列卡：李四川提出軌道建設、都更、勞工政策三項政見
+  return `<svg width="100%" height="auto" preserveAspectRatio="xMidYMid meet" viewBox="0 0 340 172" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="李四川提出軌道建設、都更、勞工政策三項政見圖卡">
+  <rect width="340" height="172" fill="#1a2430"/>
+  <text x="16" y="24" fill="#90caf9" font-size="11" font-weight="700">新北市政政見條列卡｜2026-09-19</text>
+  <text x="16" y="44" fill="#ffffff" font-size="14.5" font-weight="700">李四川新北市政「三項政見」核心主軸</text>
+  <rect x="16" y="54" width="308" height="32" rx="7" fill="#263545"/>
+  <text x="26" y="75" fill="#ffffff" font-size="12.5" font-weight="700">1. 軌道建設：推動「軌道建設123」打造30分鐘生活圈</text>
+  <rect x="16" y="92" width="308" height="32" rx="7" fill="#263545"/>
+  <text x="26" y="113" fill="#ffffff" font-size="12.5" font-weight="700">2. 都市更新：加速老舊社區防災都更與行政程序</text>
+  <rect x="16" y="130" width="308" height="32" rx="7" fill="#263545"/>
+  <text x="26" y="151" fill="#ffffff" font-size="12.5" font-weight="700">3. 勞工政策：規劃興建勞工宅、落實勞工權益保障</text>
+  </svg>`;
+ }
+ // default: ntpc_july_poll (國策智庫 7 月民調長條圖)
+ return `<svg width="100%" height="auto" preserveAspectRatio="xMidYMid meet" viewBox="0 0 340 174" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="國策智庫7月新北市長民調長條圖：蘇巧慧40.2%、李四川40.0%、未表態19.8%">
+  <rect width="340" height="174" fill="#1c2229"/>
+  <text x="16" y="24" fill="#b0bec5" font-size="11" font-weight="700">國策智庫 7 月民調長條圖｜資料日期：2026-07-15</text>
+  <text x="16" y="44" fill="#ffffff" font-size="14" font-weight="700">新北市長支持度調查（差距 0.2% 誤差範圍內）</text>
+  <!-- 蘇巧慧 40.2% -->
+  <text x="16" y="74" fill="#ffffff" font-size="12.5" font-weight="700">蘇巧慧</text>
+  <rect x="78" y="61" width="180" height="18" rx="4" fill="#37474f"/>
+  <rect x="78" y="61" width="144.7" height="18" rx="4" fill="#90a4ae"/>
+  <text x="266" y="75" fill="#ffffff" font-size="13" font-weight="800">40.2%</text>
+  <!-- 李四川 40.0% -->
+  <text x="16" y="108" fill="#ffffff" font-size="12.5" font-weight="700">李四川</text>
+  <rect x="78" y="95" width="180" height="18" rx="4" fill="#37474f"/>
+  <rect x="78" y="95" width="144.0" height="18" rx="4" fill="#78909c"/>
+  <text x="266" y="109" fill="#ffffff" font-size="13" font-weight="800">40.0%</text>
+  <!-- 未表態／尚未決定 19.8% -->
+  <text x="16" y="142" fill="#b0bec5" font-size="12" font-weight="600">未表態</text>
+  <rect x="78" y="129" width="180" height="18" rx="4" fill="#37474f"/>
+  <rect x="78" y="129" width="71.3" height="18" rx="4" fill="#546e7a"/>
+  <text x="266" y="143" fill="#cfd8dc" font-size="12.5" font-weight="700">19.8%</text>
+  <text x="16" y="164" fill="#90a4ae" font-size="10.5">註：19.8% 為尚未決定或未表態之受訪市民</text>
+ </svg>`;
+ }
+ /* =========================================================================
+ * 4. localStorage 安全封裝 (所有讀寫皆包 try/catch，符合第 10 節技術規格)
+ * ========================================================================= */
+ const STORAGE_KEY_PROGRESS = 'threads_sim_v1_progress';
+ const STORAGE_KEY_COMPLETED_IDS = 'threads_sim_v1_completed_ids';
+ const STORAGE_KEY_THEME = 'threads_sim_v1_theme';
+ function safeStorageGet(key) {
+ try {
+  return window.localStorage.getItem(key);
+ } catch (err) {
+  return null;
+ }
+ }
+ function safeStorageSet(key, val) {
+ try {
+  window.localStorage.setItem(key, val);
+  return true;
+ } catch (err) {
+  return false;
+ }
+ }
+ function safeStorageRemove(key) {
+ try {
+  window.localStorage.removeItem(key);
+ } catch (err) {}
+ }
+ function getCompletedParticipantIds() {
+ const raw = safeStorageGet(STORAGE_KEY_COMPLETED_IDS);
+ if (!raw) return [];
+ try {
+  const parsed = JSON.parse(raw);
+  return Array.isArray(parsed) ? parsed : [];
+ } catch (e) {
+  return [];
+ }
+ }
+ function markParticipantIdCompleted(pid) {
+ if (!pid) return;
+ const list = getCompletedParticipantIds();
+ const upper = pid.toUpperCase();
+ if (!list.includes(upper)) {
+  list.push(upper);
+  safeStorageSet(STORAGE_KEY_COMPLETED_IDS, JSON.stringify(list));
+ }
+ }
+ /* =========================================================================
+ * 5. 前景計時器、排程管理與狀態資料結構 (Section 5, 7, 8)
+ * ========================================================================= */
+ function createEmptyQuestionRecord() {
+ return {
+  value: null,
+  confirmed: false,
+  firstShownPerfMs: null,
+  firstAnswerAt: null,
+  firstValue: null,
+  confirmedAt: null,
+  answerDurationMs: 0,
+  history: []
+ };
+ }
+ function createInitialState() {
+ const screens = {};
+ ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'].forEach(s => {
+  screens[s] = {
+  visibleMs: 0,
+  enterCount: 0,
+  firstEnterAt: null,
+  lastLeaveAt: null
+  };
+ });
+ const postFeelings = {};
+ const postDwell = {};
+ POSTS.forEach(p => {
+  postFeelings[p.id] = {
+  score: null,
+  reason: '',
+  source: '',
+  confirmed: false,
+  firstShownAtFgMs: null,
+  firstAnswerAt: null,
+  firstValue: null,
+  confirmedAt: null,
+  answerDurationMs: 0,
+  history: []
+  };
+  postDwell[p.id] = {
+  postId: p.id,
+  startedAtFgMs: null,
+  postVisibleMs: 0,
+  commentsExpandedMs: 0,
+  firstExpandDelayMs: null,
+  expandCount: 0,
+  inputFocusMs: 0,
+  firstCommentDelayMs: null,
+  questionAnswerDurationMs: 0,
+  scheduledIntervalsMs: {
+   enterToTypingMs: null,
+   typingToFirstMs: null,
+   betweenCommentsMs: []
+  }
+  };
+ });
+ return {
+  meta: {
+  version: CONFIG.version,
+  orderVersion: null, // 'odd_taipei_first' | 'even_newtaipei_first'
+  postOrderIds: [1, 2, 3, 4, 5, 6],
+  participantId: '',
+  screenWidth: window.innerWidth || 390,
+  isTouch: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0),
+  language: navigator.language || 'zh-TW',
+  startedAt: new Date().toISOString(),
+  endedAt: null
+  },
+  consent: {
+  ageConfirmed: false,
+  consentConfirmed: false,
+  consentedAt: null
+  },
+  currentScreen: 'S2', // 最一開始詢問政治立場 (S2)，接著完成 S1 入口
+  unlockedPostCount: 1,
+  returningToReview: false,
+  submitted: false,
+  hasDownloaded: false,
+  answers: {
+  preTest: createEmptyQuestionRecord(),
+  postTest: createEmptyQuestionRecord(),
+  posts: postFeelings
+  },
+  comments: [], // 受試者發表的留言 { id, postId, replyTo, text, createdAt, perfMs, retracted, retractedAt }
+  dwell: {
+  screens: screens,
+  posts: postDwell,
+  reviewPage: {
+   visibleMs: 0,
+   modifyCount: 0
+  },
+  sessionTotal: {
+   wallClockMs: 0,
+   activeForegroundMs: 0
+  }
+  },
+  events: [],
+  integrity: {
+  algorithm: 'SHA-256',
+  checksum: '',
+  deliveryCode: ''
+  },
+  // 執行期 UI 狀態（不影響匯出規格，但用於斷點續傳）
+  runtimePosts: {
+  1: { scheduleStarted: false, typingShown: false, revealedCount: CONFIG.timing.initialCommentCount, feelingShown: false, expanded: false, liked: false, replyTarget: null },
+  2: { scheduleStarted: false, typingShown: false, revealedCount: CONFIG.timing.initialCommentCount, feelingShown: false, expanded: false, liked: false, replyTarget: null },
+  3: { scheduleStarted: false, typingShown: false, revealedCount: CONFIG.timing.initialCommentCount, feelingShown: false, expanded: false, liked: false, replyTarget: null },
+  4: { scheduleStarted: false, typingShown: false, revealedCount: CONFIG.timing.initialCommentCount, feelingShown: false, expanded: false, liked: false, replyTarget: null },
+  5: { scheduleStarted: false, typingShown: false, revealedCount: CONFIG.timing.initialCommentCount, feelingShown: false, expanded: false, liked: false, replyTarget: null },
+  6: { scheduleStarted: false, typingShown: false, revealedCount: CONFIG.timing.initialCommentCount, feelingShown: false, expanded: false, liked: false, replyTarget: null }
+  }
+ };
+ }
+ let appState = createInitialState();
+ // 前景計時與可暫停排程器 (使用 performance.now())
+ let isPageForeground = !document.hidden && document.hasFocus();
+ let lastFgTickPerf = performance.now();
+ const postVisibilityRatioMap = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+ let focusedInputPostId = null;
+ // 可隨分頁隱藏而暫停的計時任務佇列
+ const fgTimers = new Map();
+ let fgTimerIdSeq = 1;
+ function scheduleForegroundTimer(delayMs, callback) {
+ const id = fgTimerIdSeq++;
+ fgTimers.set(id, {
+  remainingMs: Math.max(0, delayMs),
+  callback: callback
+ });
+ return id;
+ }
+ function clearAllForegroundTimers() {
+ fgTimers.clear();
+ }
+ function logEvent(type, detail = {}) {
+ const perfMs = Math.round(performance.now());
+ appState.events.push({
+  type: type,
+  perfMs: perfMs,
+  fgMs: Math.round(appState.dwell.sessionTotal.activeForegroundMs),
+  wallTime: new Date().toISOString(),
+  detail: detail
+ });
+ }
+ function saveProgressToStorage() {
+ if (document.body.classList.contains('researcher-mode-active')) return;
+ safeStorageSet(STORAGE_KEY_PROGRESS, JSON.stringify(appState));
+ }
+ // 每 100ms 精準推進前景時間與排程計時器
+ function tickForegroundClock() {
+ const nowPerf = performance.now();
+ const dt = Math.max(0, nowPerf - lastFgTickPerf);
+ lastFgTickPerf = nowPerf;
+ const currentlyFg = !document.hidden && (document.hasFocus ? document.hasFocus() : true);
+ if (currentlyFg !== isPageForeground) {
+  isPageForeground = currentlyFg;
+  logEvent(isPageForeground ? 'visibility_resume' : 'visibility_hidden', {});
+ }
+ if (document.body.classList.contains('researcher-mode-active')) return;
+ // 更新總牆鐘時間
+ const startEpoch = Date.parse(appState.meta.startedAt) || Date.now();
+ appState.dwell.sessionTotal.wallClockMs = Math.max(0, Date.now() - startEpoch);
+ if (!isPageForeground || dt <= 0 || dt > 5000) return;
+ // 累加有效前景時間
+ appState.dwell.sessionTotal.activeForegroundMs += dt;
+ // 累加當前畫面 (S1-S8) 停留時間
+ const curScr = appState.currentScreen;
+ if (curScr && appState.dwell.screens[curScr]) {
+  appState.dwell.screens[curScr].visibleMs += dt;
+ }
+ if (curScr === 'S6') {
+  appState.dwell.reviewPage.visibleMs += dt;
+ }
+ // 若在貼文區 (S4)，計算每篇貼文 >= 50% 可見時間、留言區展開且可見時間、輸入框聚焦時間
+ if (curScr === 'S4') {
+  POSTS.forEach(p => {
+  const pid = p.id;
+  const ratio = postVisibilityRatioMap[pid] || 0;
+  const pd = appState.dwell.posts[pid];
+  const rp = appState.runtimePosts[pid];
+  if (ratio >= 0.5) {
+   pd.postVisibleMs += dt;
+   if (rp && rp.expanded) {
+   pd.commentsExpandedMs += dt;
+   }
+  }
+  if (focusedInputPostId === pid) {
+   pd.inputFocusMs += dt;
+  }
+  });
+ }
+ // 推進前景排程計時器 (分頁隱藏時不推進，確保每位受試者看到相同間隔)
+ const dueList = [];
+ fgTimers.forEach((task, id) => {
+  task.remainingMs -= dt;
+  if (task.remainingMs <= 0) {
+  dueList.push({ id, callback: task.callback });
+  }
+ });
+ dueList.forEach(item => {
+  fgTimers.delete(item.id);
+  try {
+  item.callback();
+  } catch (err) {
+  console.error(err);
+  }
+ });
+ }
+ setInterval(tickForegroundClock, 80);
+ document.addEventListener('visibilitychange', () => {
+ lastFgTickPerf = performance.now();
+ tickForegroundClock();
+ });
+ window.addEventListener('blur', () => {
+ lastFgTickPerf = performance.now();
+ tickForegroundClock();
+ });
+ window.addEventListener('focus', () => {
+ lastFgTickPerf = performance.now();
+ tickForegroundClock();
+ });
+ function switchLogicalScreen(targetScreen) {
+ const nowFg = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+ const prev = appState.currentScreen;
+ if (prev && appState.dwell.screens[prev] && prev !== targetScreen) {
+  appState.dwell.screens[prev].lastLeaveAt = nowFg;
+ }
+ appState.currentScreen = targetScreen;
+ const scrObj = appState.dwell.screens[targetScreen];
+ if (scrObj) {
+  scrObj.enterCount += 1;
+  if (scrObj.firstEnterAt === null) {
+  scrObj.firstEnterAt = nowFg;
+  }
+ }
+ updateStageHeaderBar();
+ saveProgressToStorage();
+ }
+ /* =========================================================================
+ * 6. 主題切換 (跟隨系統 prefers-color-scheme，右上角可切換且不影響進度)
+ * ========================================================================= */
+ function initTheme() {
+ const saved = safeStorageGet(STORAGE_KEY_THEME);
+ const sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+ const theme = saved || (sysDark ? 'dark' : 'light');
+ applyTheme(theme, false);
+ if (window.matchMedia) {
+  try {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+   if (!safeStorageGet(STORAGE_KEY_THEME)) {
+   applyTheme(e.matches ? 'dark' : 'light', false);
+   }
+  });
+  } catch (err) {}
+ }
+ const btn = document.getElementById('btn-theme-toggle');
+ if (btn) {
+  btn.addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  safeStorageSet(STORAGE_KEY_THEME, next);
+  applyTheme(next, true);
+  });
+ }
+ }
+ function applyTheme(theme, logChange) {
+ document.documentElement.setAttribute('data-theme', theme);
+ const sun = document.getElementById('icon-theme-sun');
+ const moon = document.getElementById('icon-theme-moon');
+ if (sun && moon) {
+  sun.style.display = theme === 'dark' ? 'block' : 'none';
+  moon.style.display = theme === 'dark' ? 'none' : 'block';
+ }
+ if (logChange) {
+  logEvent('theme_toggle', { theme });
+  saveProgressToStorage();
+ }
+ }
+ /* =========================================================================
+ * 7. 頂部進度列與畫面切換控制 (S1–S8)
+ * ========================================================================= */
+ function updateStageHeaderBar() {
+ const labelEl = document.getElementById('stage-label-text');
+ const subEl = document.getElementById('stage-sub-status');
+ if (!labelEl || !subEl) return;
+ const s = appState.currentScreen;
+ const map = {
+  'S2': ['步驟 1 / 8：前測政治立場詢問 (S2)', '最優先必填'],
+  'S1': ['步驟 2 / 8：受試者編號與同意書 (S1)', '必填確認'],
+  'S3': ['步驟 3 / 8：瀏覽操作說明 (S3)', '準備開始'],
+  'S4': [`步驟 4 / 8：模擬貼文瀏覽 (${getConfirmedPostCount()} / 6 篇已確認)`, '感受題必填'],
+  'S5': ['步驟 5 / 8：後測政治立場詢問 (S5)', '必填確認'],
+  'S6': ['步驟 6 / 8：總回顧與修改確認 (S6)', '可檢查與修改'],
+  'S7': ['步驟 7 / 8：送出前最後確認 (S7)', '確認對話框'],
+  'S8': ['步驟 8 / 8：完成結果與資料檔交付 (S8)', '請下載資料檔']
+ };
+ const info = map[s] || map['S2'];
+ labelEl.textContent = info[0];
+ subEl.textContent = info[1];
+ }
+ function showDomScreen(domScreenId) {
+ document.querySelectorAll('.screen-view').forEach(el => {
+  el.classList.remove('active');
+ });
+ const target = document.getElementById(domScreenId);
+ if (target) {
+  target.classList.add('active');
+ }
+ window.scrollTo({ top: 0, behavior: 'smooth' });
+ }
+ function getConfirmedPostCount() {
+ let c = 0;
+ POSTS.forEach(p => {
+  if (appState.answers.posts[p.id] && appState.answers.posts[p.id].confirmed) c++;
+ });
+ return c;
+ }
+ /* =========================================================================
+ * 8. 開場階段：最一開始先問清政治立場 (S2) + 受試者編號與同意書 (S1)
+ * ========================================================================= */
+ function renderStanceOptions(containerId, recordObj, radioGroupName, onSelectCallback) {
+ const container = document.getElementById(containerId);
+ if (!container) return;
+ container.innerHTML = '';
+ CONFIG.stanceOptions.forEach((optText, idx) => {
+  const label = document.createElement('label');
+  const isSelected = recordObj.value === optText;
+  const isLocked = recordObj.confirmed;
+  label.className = 'radio-option-label' + (isSelected ? ' selected' : '') + (isLocked ? ' locked' : '');
+  const radio = document.createElement('input');
+  radio.type = 'radio';
+  radio.name = radioGroupName;
+  radio.value = optText;
+  radio.checked = isSelected;
+  radio.disabled = isLocked;
+  radio.id = `${radioGroupName}_opt_${idx}`;
+  radio.addEventListener('change', () => {
+  if (recordObj.confirmed) return;
+  onSelectCallback(optText);
+  });
+  const span = document.createElement('span');
+  span.textContent = optText;
+  label.appendChild(radio);
+  label.appendChild(span);
+  container.appendChild(label);
+ });
+ }
+ function recordStanceSelection(whichKey, selectedValue) {
+ const rec = appState.answers[whichKey];
+ const nowIso = new Date().toISOString();
+ const nowFg = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+ if (rec.firstShownPerfMs === null) {
+  rec.firstShownPerfMs = nowFg;
+ }
+ if (rec.firstAnswerAt === null) {
+  rec.firstAnswerAt = nowIso;
+  rec.firstValue = selectedValue;
+ }
+ rec.value = selectedValue;
+ rec.history.push({
+  action: 'select',
+  value: selectedValue,
+  at: nowIso,
+  fgMs: nowFg
+ });
+ logEvent('answer_select', { question: whichKey, value: selectedValue });
+ saveProgressToStorage();
+ }
+ function confirmStanceQuestion(whichKey) {
+ const rec = appState.answers[whichKey];
+ if (!rec.value) return;
+ const nowIso = new Date().toISOString();
+ const nowFg = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+ rec.confirmed = true;
+ rec.confirmedAt = nowIso;
+ if (rec.firstShownPerfMs !== null) {
+  rec.answerDurationMs = Math.max(0, nowFg - rec.firstShownPerfMs);
+ }
+ rec.history.push({
+  action: 'confirm',
+  value: rec.value,
+  at: nowIso,
+  fgMs: nowFg
+ });
+ logEvent('answer_confirm', { question: whichKey, value: rec.value, durationMs: rec.answerDurationMs });
+ saveProgressToStorage();
+ }
+ function unlockStanceQuestion(whichKey) {
+ const rec = appState.answers[whichKey];
+ const nowIso = new Date().toISOString();
+ const nowFg = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+ rec.confirmed = false;
+ rec.firstShownPerfMs = nowFg;
+ rec.history.push({
+  action: 'modify_unlock',
+  value: rec.value,
+  at: nowIso,
+  fgMs: nowFg
+ });
+ logEvent('answer_modify_unlock', { question: whichKey });
+ saveProgressToStorage();
+ }
+ function refreshOpeningS1S2UI() {
+ const preRec = appState.answers.preTest;
+ if (preRec.firstShownPerfMs === null) {
+  preRec.firstShownPerfMs = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+ }
+ renderStanceOptions('pretest-options-container', preRec, 'pretest_stance', val => {
+  recordStanceSelection('preTest', val);
+  refreshOpeningS1S2UI();
+ });
+ const btnConfirmPre = document.getElementById('btn-confirm-pretest');
+ const statusPre = document.getElementById('pretest-confirmed-status');
+ const labelPre = document.getElementById('pretest-confirmed-label');
+ const backBtnWrap = document.getElementById('return-review-from-s2');
+ if (preRec.confirmed) {
+  btnConfirmPre.style.display = 'none';
+  statusPre.style.display = 'flex';
+  labelPre.textContent = preRec.value;
+ } else {
+  btnConfirmPre.style.display = 'inline-flex';
+  btnConfirmPre.disabled = !preRec.value;
+  statusPre.style.display = 'none';
+ }
+ if (appState.returningToReview) {
+  backBtnWrap.style.display = 'block';
+ } else {
+  backBtnWrap.style.display = 'none';
+ }
+ // 驗證 S1 受試者編號、年齡、同意書
+ const pidInput = document.getElementById('input-participant-id');
+ const pidFeedback = document.getElementById('pid-feedback-msg');
+ const dupBox = document.getElementById('pid-duplicate-box');
+ const chkDup = document.getElementById('chk-allow-duplicate');
+ const chkAge = document.getElementById('chk-age-confirm');
+ const chkConsent = document.getElementById('chk-consent-confirm');
+ const btnGoS3 = document.getElementById('btn-go-s3');
+ if (pidInput && pidInput.value !== appState.meta.participantId) {
+  pidInput.value = appState.meta.participantId || '';
+ }
+ if (chkAge) chkAge.checked = !!appState.consent.ageConfirmed;
+ if (chkConsent) chkConsent.checked = !!appState.consent.consentConfirmed;
+ const rawPid = (appState.meta.participantId || '').trim().toUpperCase();
+ const pidValid = CONFIG.participantIdPattern.test(rawPid);
+ const completedList = getCompletedParticipantIds();
+ const isDuplicate = pidValid && completedList.includes(rawPid);
+ if (!rawPid) {
+  pidFeedback.textContent = '請輸入測試人員提供之編號（格式：P001–P999）。';
+  pidFeedback.style.color = 'var(--text-secondary)';
+  dupBox.style.display = 'none';
+ } else if (!pidValid) {
+  pidFeedback.textContent = '編號格式不符，請輸入 P001 至 P999 之間的編號（例如 P001、P012）。';
+  pidFeedback.style.color = 'var(--err-text)';
+  dupBox.style.display = 'none';
+ } else {
+  const num = parseInt(rawPid.slice(1), 10);
+  const orderDesc = (num % 2 === 1) ? '奇數編號（台北貼文先出現）' : '偶數編號（新北貼文先出現）';
+  pidFeedback.textContent = `✓ 編號格式正確：${rawPid} — ${orderDesc}`;
+  pidFeedback.style.color = 'var(--ok-text)';
+  dupBox.style.display = isDuplicate ? 'block' : 'none';
+ }
+ const duplicateAllowed = !isDuplicate || (chkDup && chkDup.checked);
+ const s1Complete = pidValid && duplicateAllowed && appState.consent.ageConfirmed && appState.consent.consentConfirmed;
+ const s2Complete = preRec.confirmed;
+ if (btnGoS3) {
+  btnGoS3.disabled = !(s1Complete && s2Complete);
+ }
+ }
+ function applyParticipantOrderFromId(pid) {
+ const clean = (pid || '').trim().toUpperCase();
+ const num = parseInt(clean.slice(1), 10);
+ if (!isNaN(num) && num % 2 === 0) {
+  appState.meta.orderVersion = 'even_newtaipei_first';
+  appState.meta.postOrderIds = [4, 5, 6, 1, 2, 3];
+ } else {
+  appState.meta.orderVersion = 'odd_taipei_first';
+  appState.meta.postOrderIds = [1, 2, 3, 4, 5, 6];
+ }
+ }
+ /* =========================================================================
+ * 9. S4 貼文區：6 篇貼文依序呈現、背景留言排程、展開收合、留言回覆、感受題
+ * ========================================================================= */
+ let postIntersectionObserver = null;
+ const postCurrentlyInViewMap = { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false };
+ function randomIntBetween(minMs, maxMs) {
+ return Math.floor(minMs + Math.random() * (maxMs - minMs + 1));
+ }
+ function getPostById(postId) {
+ return POSTS.find(p => p.id === Number(postId));
+ }
+ function initPostObserver() {
+ if (postIntersectionObserver) {
+  postIntersectionObserver.disconnect();
+ }
+ postIntersectionObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+  const pid = Number(entry.target.getAttribute('data-post-id'));
+  if (!pid) return;
+  // 計算相對於貼文卡片或視窗高度的可見比例，確保小視窗也能準確判定 50% 與 60%
+  const rect = entry.boundingClientRect;
+  const vh = window.innerHeight || document.documentElement.clientHeight || 680;
+  const visibleTop = Math.max(0, rect.top);
+  const visibleBottom = Math.min(vh, rect.bottom);
+  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+  const refHeight = Math.min(rect.height || 1, vh);
+  const effectiveRatio = Math.max(entry.intersectionRatio, visibleHeight / refHeight);
+  postVisibilityRatioMap[pid] = entry.isIntersecting ? effectiveRatio : 0;
+  const pd = appState.dwell.posts[pid];
+  const nowFg = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+  // 50% 進入與離開事件紀錄
+  if (effectiveRatio >= 0.5 && !postCurrentlyInViewMap[pid]) {
+   postCurrentlyInViewMap[pid] = true;
+   if (pd.startedAtFgMs === null) {
+   pd.startedAtFgMs = nowFg;
+   }
+   logEvent('post_enter', { postId: pid });
+  } else if (effectiveRatio < 0.5 && postCurrentlyInViewMap[pid]) {
+   postCurrentlyInViewMap[pid] = false;
+   logEvent('post_leave', { postId: pid });
+  }
+  // 60% 進入畫面 → 啟動該篇貼文的「…」與留言排程 (不受後續滑離或是否展開影響)
+  if (effectiveRatio >= 0.6) {
+   if (pd.startedAtFgMs === null) {
+   pd.startedAtFgMs = nowFg;
+   }
+   startPostCommentSchedule(pid);
+  }
+  });
+ }, {
+  threshold: [0, 0.25, 0.5, 0.6, 0.75, 1.0]
+ });
+ }
+ function startPostCommentSchedule(postId) {
+ const rp = appState.runtimePosts[postId];
+ const pd = appState.dwell.posts[postId];
+ const post = getPostById(postId);
+ if (!rp || !post || rp.scheduleStarted) return;
+ rp.scheduleStarted = true;
+ const totalComments = post.comments.length; // 15 則
+ // 若從 localStorage 恢復時已經全部產生完畢
+ if (rp.feelingShown) return;
+ // 階段 1：貼文 60% 進入畫面 → 2-3 秒顯示「…」
+ const delayToTyping = randomIntBetween(CONFIG.timing.postEnterToTypingMs[0], CONFIG.timing.postEnterToTypingMs[1]);
+ pd.scheduledIntervalsMs.enterToTypingMs = delayToTyping;
+ scheduleForegroundTimer(delayToTyping, () => {
+  rp.typingShown = true;
+  logEvent('typing_indicator_start', { postId, delayMs: delayToTyping });
+  updatePostTypingAndToggleBar(postId);
+  saveProgressToStorage();
+  // 階段 2：「…」→ 新增下一則留言（從原本已存在的 10 則開始往第 11..15 則新增）
+  const delayToFirst = randomIntBetween(CONFIG.timing.typingToFirstCommentMs[0], CONFIG.timing.typingToFirstCommentMs[1]);
+  pd.scheduledIntervalsMs.typingToFirstMs = delayToFirst;
+  const startCount = Math.max(rp.revealedCount || 0, CONFIG.timing.initialCommentCount || 10);
+  const firstNewIndex = Math.min(totalComments, startCount + 1);
+  scheduleForegroundTimer(delayToFirst, () => {
+  revealNextCommentStep(postId, firstNewIndex, delayToFirst);
+  });
+ });
+ }
+ function revealNextCommentStep(postId, countToReveal, actualIntervalMs) {
+ const rp = appState.runtimePosts[postId];
+ const pd = appState.dwell.posts[postId];
+ const post = getPostById(postId);
+ if (!rp || !post) return;
+ rp.revealedCount = countToReveal;
+ const latestComment = post.comments[countToReveal - 1];
+ logEvent('comment_appear', {
+  postId,
+  commentIndex: countToReveal,
+  commentId: latestComment ? latestComment.id : '',
+  intervalMs: actualIntervalMs
+ });
+ // 更新卡片上的「…」文字與「查看 N 則留言」計數
+ updatePostTypingAndToggleBar(postId);
+ // 若該貼文留言區目前已展開，將新產生的留言以動畫加入
+ if (rp.expanded && latestComment) {
+  appendSingleCommentToDom(postId, latestComment, countToReveal - 1, true);
+ }
+ saveProgressToStorage();
+ if (countToReveal < post.comments.length) {
+  // 階段 3：之後每則留言間隔 2.2-5.5 秒
+  const nextDelay = randomIntBetween(CONFIG.timing.betweenCommentsMs[0], CONFIG.timing.betweenCommentsMs[1]);
+  pd.scheduledIntervalsMs.betweenCommentsMs.push(nextDelay);
+  scheduleForegroundTimer(nextDelay, () => {
+  revealNextCommentStep(postId, countToReveal + 1, nextDelay);
+  });
+ } else {
+  // 階段 4：最後一則 (第 15 則) 出現 → 1 秒後感受題浮現
+  rp.typingShown = false;
+  updatePostTypingAndToggleBar(postId);
+  scheduleForegroundTimer(CONFIG.timing.lastCommentToFeelingMs, () => {
+  rp.feelingShown = true;
+  const fAns = appState.answers.posts[postId];
+  const nowFg = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+  if (fAns.firstShownAtFgMs === null) {
+   fAns.firstShownAtFgMs = nowFg;
+  }
+  logEvent('feeling_question_show', { postId });
+  renderPostFeelingSection(postId);
+  saveProgressToStorage();
+  });
+ }
+ }
+ function buildTypingIndicatorText(post, revealedCount) {
+ const remaining = post.comments.slice(revealedCount);
+ if (remaining.length === 0) return '';
+ const names = remaining.slice(0, 2).map(c => c.authorName);
+ const othersCount = remaining.length - names.length;
+ if (othersCount > 0) {
+  return `${names.join('、')}和另外 ${othersCount} 人正在留言…`;
+ }
+ return `${names.join('、')}正在留言…`;
+ }
+ function getUserCommentsForPost(postId) {
+ return appState.comments.filter(c => c.postId === postId && !c.retracted);
+ }
+ function updatePostTypingAndToggleBar(postId) {
+ const post = getPostById(postId);
+ const rp = appState.runtimePosts[postId];
+ if (!post || !rp) return;
+ const typingWrap = document.getElementById(`typing-bar-post-${postId}`);
+ const typingText = document.getElementById(`typing-text-post-${postId}`);
+ const toggleBtn = document.getElementById(`btn-toggle-comments-${postId}`);
+ const commentCountBadge = document.getElementById(`icon-comment-count-${postId}`);
+ const userCommCount = getUserCommentsForPost(postId).length;
+ const totalVisibleCount = rp.revealedCount + userCommCount;
+ if (commentCountBadge) {
+  commentCountBadge.textContent = totalVisibleCount > 0 ? String(totalVisibleCount) : '';
+ }
+ if (typingWrap && typingText) {
+  if (rp.typingShown && rp.revealedCount < post.comments.length) {
+  typingWrap.style.display = 'flex';
+  typingText.textContent = buildTypingIndicatorText(post, rp.revealedCount);
+  } else {
+  typingWrap.style.display = 'none';
+  }
+ }
+ if (toggleBtn) {
+  if (totalVisibleCount === 0) {
+  toggleBtn.style.display = 'none';
+  } else {
+  toggleBtn.style.display = 'inline-flex';
+  toggleBtn.textContent = rp.expanded
+   ? `收合留言 (${totalVisibleCount} 則)`
+   : `查看 ${totalVisibleCount} 則留言`;
+  }
+ }
+ }
+ function togglePostComments(postId) {
+ const rp = appState.runtimePosts[postId];
+ const pd = appState.dwell.posts[postId];
+ if (!rp || !pd) return;
+ const nowFg = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+ rp.expanded = !rp.expanded;
+ if (rp.expanded) {
+  pd.expandCount += 1;
+  if (pd.firstExpandDelayMs === null) {
+  const baseStart = pd.startedAtFgMs !== null ? pd.startedAtFgMs : nowFg;
+  pd.firstExpandDelayMs = Math.max(0, nowFg - baseStart);
+  }
+  logEvent('comments_expand', { postId, revealedCount: rp.revealedCount });
+ } else {
+  logEvent('comments_collapse', { postId });
+ }
+ const listContainer = document.getElementById(`comments-list-post-${postId}`);
+ if (listContainer) {
+  if (rp.expanded) {
+  listContainer.style.display = 'block';
+  renderRevealedCommentsInDom(postId);
+  } else {
+  listContainer.style.display = 'none';
+  }
+ }
+ updatePostTypingAndToggleBar(postId);
+ saveProgressToStorage();
+ }
+ function createCommentElement(postId, commObj, isUserComment, animateIn) {
+ const item = document.createElement('div');
+ item.className = 'comment-item' + (animateIn ? ' newly-added' : '');
+ const leftCol = document.createElement('div');
+ leftCol.className = 'avatar-col';
+ const av = document.createElement('div');
+ av.className = 'comment-avatar';
+ av.innerHTML = getAvatarSvg(isUserComment ? 32 : commObj.avatarId, 30);
+ const line = document.createElement('div');
+ line.className = 'thread-connector-line';
+ leftCol.appendChild(av);
+ leftCol.appendChild(line);
+ const rightCol = document.createElement('div');
+ rightCol.className = 'comment-body-wrap';
+ const header = document.createElement('div');
+ header.className = 'comment-header';
+ const nameWrap = document.createElement('div');
+ const nameSpan = document.createElement('span');
+ nameSpan.className = 'comment-author';
+ nameSpan.textContent = isUserComment ? '你' : commObj.authorName;
+ const handleSpan = document.createElement('span');
+ handleSpan.className = 'author-handle';
+ handleSpan.style.marginLeft = '6px';
+ handleSpan.textContent = isUserComment ? '@you' : `@${commObj.handle}`;
+ nameWrap.appendChild(nameSpan);
+ nameWrap.appendChild(handleSpan);
+ header.appendChild(nameWrap);
+ if (!isUserComment) {
+  const replyBtn = document.createElement('button');
+  replyBtn.type = 'button';
+  replyBtn.className = 'reply-trigger-btn';
+  replyBtn.textContent = '回覆';
+  replyBtn.addEventListener('click', () => {
+  prefillReplyToComment(postId, commObj.handle, commObj.authorName);
+  });
+  header.appendChild(replyBtn);
+ }
+ rightCol.appendChild(header);
+ if (commObj.replyTo) {
+  const replyBadge = document.createElement('div');
+  replyBadge.className = 'comment-reply-tag';
+  replyBadge.textContent = `回覆 @${commObj.replyTo}`;
+  rightCol.appendChild(replyBadge);
+ }
+ const bodyP = document.createElement('div');
+ bodyP.className = 'comment-text';
+ bodyP.textContent = commObj.text;
+ rightCol.appendChild(bodyP);
+ item.appendChild(leftCol);
+ item.appendChild(rightCol);
+ return item;
+ }
+ function renderRevealedCommentsInDom(postId) {
+ const post = getPostById(postId);
+ const rp = appState.runtimePosts[postId];
+ const listContainer = document.getElementById(`comments-list-post-${postId}`);
+ if (!post || !rp || !listContainer) return;
+ listContainer.innerHTML = '';
+ const revealed = post.comments.slice(0, rp.revealedCount);
+ revealed.forEach((c, idx) => {
+  // 點名機制保護：任何標記或回覆只能指向已經顯示出來的留言
+  listContainer.appendChild(createCommentElement(postId, c, false, false));
+ });
+ const userComms = getUserCommentsForPost(postId);
+ userComms.forEach(uc => {
+  listContainer.appendChild(createCommentElement(postId, uc, true, false));
+ });
+ }
+ function appendSingleCommentToDom(postId, commObj, idx, animateIn) {
+ const listContainer = document.getElementById(`comments-list-post-${postId}`);
+ if (!listContainer) return;
+ listContainer.appendChild(createCommentElement(postId, commObj, false, animateIn));
+ }
+ function prefillReplyToComment(postId, targetHandle, targetAuthorName) {
+ const rp = appState.runtimePosts[postId];
+ if (!rp) return;
+ rp.replyTarget = targetHandle;
+ const inputEl = document.getElementById(`composer-input-post-${postId}`);
+ const replyHintEl = document.getElementById(`composer-reply-hint-${postId}`);
+ if (replyHintEl) {
+  replyHintEl.style.display = 'flex';
+  replyHintEl.innerHTML = `<span>正在回覆 <strong>@${targetHandle}</strong> (${targetAuthorName})</span>
+  <button type="button" class="modify-link-btn" id="btn-cancel-reply-${postId}" style="font-size:11.5px; padding:0;">取消回覆</button>`;
+  const cancelBtn = document.getElementById(`btn-cancel-reply-${postId}`);
+  if (cancelBtn) {
+  cancelBtn.addEventListener('click', () => {
+   rp.replyTarget = null;
+   replyHintEl.style.display = 'none';
+  });
+  }
+ }
+ if (inputEl) {
+  const prefix = `@${targetHandle} `;
+  if (!inputEl.value.startsWith('@')) {
+  inputEl.value = prefix + inputEl.value;
+  }
+  inputEl.focus();
+  updateComposerCounterAndBtn(postId);
+ }
+ }
+ function updateComposerCounterAndBtn(postId) {
+ const inputEl = document.getElementById(`composer-input-post-${postId}`);
+ const countEl = document.getElementById(`composer-char-count-${postId}`);
+ const sendBtn = document.getElementById(`composer-send-btn-${postId}`);
+ if (!inputEl || !countEl || !sendBtn) return;
+ const val = inputEl.value || '';
+ const trimmed = val.trim();
+ countEl.textContent = `${val.length} / 300`;
+ sendBtn.disabled = trimmed.length === 0 || val.length > 300;
+ }
+ function submitUserComment(postId) {
+ const inputEl = document.getElementById(`composer-input-post-${postId}`);
+ const replyHintEl = document.getElementById(`composer-reply-hint-${postId}`);
+ const rp = appState.runtimePosts[postId];
+ const pd = appState.dwell.posts[postId];
+ if (!inputEl || !rp || !pd) return;
+ const text = (inputEl.value || '').trim();
+ if (!text || text.length > 300) return;
+ const nowFg = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+ const nowIso = new Date().toISOString();
+ if (pd.firstCommentDelayMs === null) {
+  const baseStart = pd.startedAtFgMs !== null ? pd.startedAtFgMs : nowFg;
+  pd.firstCommentDelayMs = Math.max(0, nowFg - baseStart);
+ }
+ const newComment = {
+  id: `user_c_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+  postId: postId,
+  replyTo: rp.replyTarget || null,
+  text: text,
+  createdAt: nowIso,
+  perfMs: Math.round(performance.now()),
+  fgMs: nowFg,
+  retracted: false,
+  retractedAt: null
+ };
+ appState.comments.push(newComment);
+ logEvent('comment_submit', {
+  postId,
+  commentId: newComment.id,
+  replyTo: newComment.replyTo,
+  length: text.length
+ });
+ inputEl.value = '';
+ rp.replyTarget = null;
+ if (replyHintEl) replyHintEl.style.display = 'none';
+ updateComposerCounterAndBtn(postId);
+ // 送出後立即顯示在該篇留言區
+ if (!rp.expanded) {
+  rp.expanded = true;
+  if (pd.firstExpandDelayMs === null) {
+  const baseStart = pd.startedAtFgMs !== null ? pd.startedAtFgMs : nowFg;
+  pd.firstExpandDelayMs = Math.max(0, nowFg - baseStart);
+  }
+ }
+ const listContainer = document.getElementById(`comments-list-post-${postId}`);
+ if (listContainer) {
+  listContainer.style.display = 'block';
+  renderRevealedCommentsInDom(postId);
+ }
+ updatePostTypingAndToggleBar(postId);
+ saveProgressToStorage();
+ }
+ /* =========================================================================
+ * 10. 貼文卡片渲染與每篇貼文後感受題 (7段中性灰階、三層確認之第一層)
+ * ========================================================================= */
+ function renderFeedPosts() {
+ const feedList = document.getElementById('feed-posts-list');
+ if (!feedList) return;
+ initPostObserver();
+ const orderIds = appState.meta.postOrderIds || [1, 2, 3, 4, 5, 6];
+ const unlockedIds = orderIds.slice(0, appState.unlockedPostCount);
+ unlockedIds.forEach((pid, seqIdx) => {
+  let wrapper = document.getElementById(`thread-post-card-${pid}`);
+  if (!wrapper) {
+  wrapper = buildSinglePostCardDom(pid, seqIdx + 1);
+  feedList.appendChild(wrapper);
+  if (postIntersectionObserver) {
+   postIntersectionObserver.observe(wrapper);
+  }
+  }
+  updatePostTypingAndToggleBar(pid);
+  renderPostFeelingSection(pid);
+ });
+ checkAllPostsConfirmedCta();
+ }
+ function buildSinglePostCardDom(postId, seqNumber) {
+ const post = getPostById(postId);
+ const rp = appState.runtimePosts[postId];
+ const wrapper = document.createElement('article');
+ wrapper.className = 'thread-post-wrapper';
+ wrapper.id = `thread-post-card-${postId}`;
+ wrapper.setAttribute('data-post-id', String(postId));
+ const likeCount = post.initialLikes + (rp.liked ? 1 : 0);
+ wrapper.innerHTML = `
+  <div class="post-grid">
+  <div class="avatar-col">
+   <div class="avatar-circle">${getAvatarSvg(post.avatarId, 38)}</div>
+   <div class="thread-connector-line"></div>
+  </div>
+  <div>
+   <div class="post-header-row">
+   <div class="post-author-meta">
+    <span class="author-name">${post.authorName}</span>
+    <span class="author-handle">@${post.authorHandle}</span>
+    <span class="post-time">· ${post.timeLabel}</span>
+   </div>
+   <span class="more-dots" aria-hidden="true">···</span>
+   </div>
+   <div class="post-date-note">貼文 ${seqNumber} / 6 · 資料查證日期：${post.dataDate}</div>
+   <div class="post-body-text" id="post-body-text-${postId}"></div>
+   <div class="infographic-box">${getInfographicSvg(post.infographicType)}</div>
+   <div class="action-bar">
+   <button type="button" class="icon-action-btn ${rp.liked ? 'liked' : ''}" id="btn-like-post-${postId}" aria-label="喜歡這篇貼文">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="${rp.liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+    </svg>
+    <span id="like-count-post-${postId}">${likeCount}</span>
+   </button>
+   <button type="button" class="icon-action-btn" id="btn-icon-comments-${postId}" aria-label="展開或收合留言">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+    </svg>
+    <span id="icon-comment-count-${postId}"></span>
+   </button>
+   <span class="icon-action-btn static-look" aria-hidden="true" title="轉發（模擬外觀）">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+    </svg>
+   </span>
+   <span class="icon-action-btn static-look" aria-hidden="true" title="分享（模擬外觀）">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    </svg>
+   </span>
+   </div>
+   <div class="typing-status-bar" id="typing-bar-post-${postId}" style="display:none;" aria-live="polite">
+   <div class="typing-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+   <span id="typing-text-post-${postId}">正在留言…</span>
+   </div>
+   <div>
+   <button type="button" class="toggle-comments-btn" id="btn-toggle-comments-${postId}" style="display:none;">
+    查看留言
+   </button>
+   </div>
+  </div>
+  </div>
+  <div class="post-fullwidth-lower" style="width:100%; min-width:0;">
+   <div class="comments-container" id="comments-list-post-${postId}" style="display:${rp.expanded ? 'block' : 'none'};"></div>
+   <div class="comment-composer">
+   <div class="composer-top-row">
+    <span class="composer-you-tag">
+    <span style="display:inline-flex; width:20px; height:20px; border-radius:50%; overflow:hidden;">${getAvatarSvg(32, 20)}</span>
+    你 (<code>@you</code>)
+    </span>
+    <span id="composer-char-count-${postId}">0 / 300</span>
+   </div>
+   <div id="composer-reply-hint-${postId}" style="display:none; align-items:center; justify-content:space-between; font-size:12px; color:var(--accent-blue); margin-bottom:6px;"></div>
+   <div class="composer-input-row">
+    <textarea id="composer-input-post-${postId}" class="composer-textarea" rows="1" maxlength="300" placeholder="以 @you 身分留言（選填，上限 300 字）…"></textarea>
+    <button type="button" class="composer-send-btn" id="composer-send-btn-${postId}" disabled>送出</button>
+   </div>
+   </div>
+   <div id="feeling-mount-post-${postId}"></div>
+  </div>
+ `;
+ const bodyEl = wrapper.querySelector(`#post-body-text-${postId}`);
+ if (bodyEl) bodyEl.textContent = post.content;
+ const likeBtn = wrapper.querySelector(`#btn-like-post-${postId}`);
+ if (likeBtn) {
+  likeBtn.addEventListener('click', () => {
+  rp.liked = !rp.liked;
+  likeBtn.classList.toggle('liked', rp.liked);
+  const svgEl = likeBtn.querySelector('svg');
+  if (svgEl) {
+   svgEl.setAttribute('fill', rp.liked ? 'currentColor' : 'none');
+   svgEl.classList.remove('heart-anim');
+   void svgEl.offsetWidth;
+   svgEl.classList.add('heart-anim');
+  }
+  const cntEl = wrapper.querySelector(`#like-count-post-${postId}`);
+  if (cntEl) cntEl.textContent = String(post.initialLikes + (rp.liked ? 1 : 0));
+  saveProgressToStorage();
+  });
+ }
+ const iconCommBtn = wrapper.querySelector(`#btn-icon-comments-${postId}`);
+ const textToggleBtn = wrapper.querySelector(`#btn-toggle-comments-${postId}`);
+ if (iconCommBtn) iconCommBtn.addEventListener('click', () => togglePostComments(postId));
+ if (textToggleBtn) textToggleBtn.addEventListener('click', () => togglePostComments(postId));
+ const composerInput = wrapper.querySelector(`#composer-input-post-${postId}`);
+ const composerSend = wrapper.querySelector(`#composer-send-btn-${postId}`);
+ if (composerInput) {
+  composerInput.addEventListener('focus', () => {
+  focusedInputPostId = postId;
+  logEvent('input_focus', { postId });
+  });
+  composerInput.addEventListener('blur', () => {
+  if (focusedInputPostId === postId) focusedInputPostId = null;
+  logEvent('input_blur', { postId });
+  });
+  composerInput.addEventListener('input', () => {
+  updateComposerCounterAndBtn(postId);
+  });
+ }
+ if (composerSend) {
+  composerSend.addEventListener('click', () => submitUserComment(postId));
+ }
+ if (rp.expanded) {
+  setTimeout(() => renderRevealedCommentsInDom(postId), 0);
+ }
+ return wrapper;
+ }
+ function renderPostFeelingSection(postId) {
+ const mount = document.getElementById(`feeling-mount-post-${postId}`);
+ const rp = appState.runtimePosts[postId];
+ const fAns = appState.answers.posts[postId];
+ if (!mount || !rp || !fAns) return;
+ if (!rp.feelingShown) {
+  mount.innerHTML = `
+  <div style="margin-top:12px; padding:10px 12px; border-radius:10px; background:var(--bg-subtle); color:var(--text-secondary); font-size:12.5px; display:flex; align-items:center; justify-content:space-between;">
+   <span>請先瀏覽貼文，待網友留言載入完成後將浮現本篇感受題…</span>
+   <span style="font-weight:700;">(${rp.revealedCount} / 15)</span>
+  </div>
+  `;
+  return;
+ }
+ const isLocked = fAns.confirmed;
+ let segButtonsHtml = '';
+ for (let v = 1; v <= 7; v++) {
+  const selClass = fAns.score === v ? 'selected' : '';
+  const subLabel = v === 1 ? '舒服' : (v === 4 ? '普通' : (v === 7 ? '不舒服' : ''));
+  segButtonsHtml += `
+  <button type="button" class="feeling-seg-btn ${selClass}" data-post-id="${postId}" data-val="${v}" ${isLocked ? 'disabled' : ''} aria-label="感受分數 ${v} ${subLabel}">
+   <span>${v}</span>
+   ${subLabel ? `<span style="font-size:10px; font-weight:500; opacity:0.85;">${subLabel}</span>` : ''}
+  </button>
+  `;
+ }
+ let sourceChipsHtml = '';
+ if (CONFIG.features.enableSourceQuestion) {
+  const chips = CONFIG.feelingSources.map(src => {
+  const active = fAns.source === src ? 'selected' : '';
+  return `<button type="button" class="source-chip-btn ${active}" data-src="${src}" ${isLocked ? 'disabled' : ''}>${src}</button>`;
+  }).join('');
+  sourceChipsHtml = `
+  <div style="margin-top:10px;">
+   <div style="font-size:12.5px; font-weight:600; color:var(--text-secondary);">選填：你的感受主要來自？</div>
+   <div class="source-chips-row" id="feeling-src-row-${postId}">${chips}</div>
+  </div>
+  `;
+ }
+ mount.innerHTML = `
+  <div class="feeling-card" id="feeling-card-box-${postId}">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+   <span class="card-step-tag" style="margin:0;">本篇感受題（必填・1=最舒服，7=最不舒服）</span>
+  </div>
+  <div style="font-weight:700; font-size:15px; margin-bottom:8px;">你看完這篇貼文，有什麼感受？</div>
+  <div class="feeling-scale-labels" aria-hidden="true">
+   <span>1 舒服</span>
+   <span>4 普通</span>
+   <span>7 不舒服</span>
+  </div>
+  <div class="feeling-bar-grid" id="feeling-bar-grid-${postId}" role="radiogroup" aria-label="你看完這篇貼文，有什麼感受？">
+   ${segButtonsHtml}
+  </div>
+  <div style="margin-top:8px;">
+   <label style="display:block; font-size:12.5px; font-weight:600; color:var(--text-secondary); margin-bottom:4px;" for="feeling-reason-${postId}">
+   選填：一句話說明原因（100 字內）
+   </label>
+   <input type="text" id="feeling-reason-${postId}" class="text-input" style="min-height:38px; font-size:13px;" maxlength="100" placeholder="可簡短說明您的感受原因（選填）" value="${escapeHtmlAttr(fAns.reason || '')}" ${isLocked ? 'disabled' : ''}>
+  </div>
+  ${sourceChipsHtml}
+  <div class="confirm-bar" style="margin-top:12px;">
+   <button type="button" class="btn-primary" id="btn-confirm-feeling-${postId}" style="display:${isLocked ? 'none' : 'inline-flex'};" ${fAns.score === null ? 'disabled' : ''}>
+   確認本篇感受
+   </button>
+   <div id="feeling-confirmed-bar-${postId}" style="display:${isLocked ? 'flex' : 'none'}; width:100%; align-items:center; justify-content:space-between;">
+   <span class="confirmed-badge">✓ 已確認（分數：${fAns.score || '-'} / 7）</span>
+   <button type="button" class="modify-link-btn" id="btn-modify-feeling-${postId}">修改</button>
+   </div>
+  </div>
+  ${appState.returningToReview ? `
+   <div style="margin-top:10px;">
+   <button type="button" class="btn-secondary" id="btn-return-s6-post-${postId}" style="width:100%;">返回回顧頁 (S6)</button>
+   </div>
+  ` : ''}
+  </div>
+ `;
+ mount.querySelectorAll('.feeling-seg-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+  if (fAns.confirmed) return;
+  const val = Number(btn.getAttribute('data-val'));
+  const nowIso = new Date().toISOString();
+  const nowFg = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+  if (fAns.firstAnswerAt === null) {
+   fAns.firstAnswerAt = nowIso;
+   fAns.firstValue = val;
+  }
+  fAns.score = val;
+  fAns.history.push({
+   action: 'select_score',
+   value: val,
+   reason: fAns.reason,
+   source: fAns.source,
+   at: nowIso,
+   fgMs: nowFg
+  });
+  logEvent('answer_select', { question: `post_${postId}`, value: val });
+  renderPostFeelingSection(postId);
+  saveProgressToStorage();
+  });
+ }
+ );
+ const reasonInput = mount.querySelector(`#feeling-reason-${postId}`);
+ if (reasonInput) {
+  reasonInput.addEventListener('input', () => {
+  fAns.reason = reasonInput.value.slice(0, 100);
+  saveProgressToStorage();
+  });
+ }
+ mount.querySelectorAll('.source-chip-btn').forEach(chip => {
+  chip.addEventListener('click', () => {
+  if (fAns.confirmed) return;
+  const srcVal = chip.getAttribute('data-src');
+  fAns.source = (fAns.source === srcVal) ? '' : srcVal;
+  renderPostFeelingSection(postId);
+  saveProgressToStorage();
+  });
+ });
+ const confirmBtn = mount.querySelector(`#btn-confirm-feeling-${postId}`);
+ if (confirmBtn) {
+  confirmBtn.addEventListener('click', () => {
+  if (fAns.score === null) return;
+  const nowIso = new Date().toISOString();
+  const nowFg = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+  fAns.confirmed = true;
+  fAns.confirmedAt = nowIso;
+  const shownAt = fAns.firstShownAtFgMs !== null ? fAns.firstShownAtFgMs : nowFg;
+  const dur = Math.max(0, nowFg - shownAt);
+  fAns.answerDurationMs = dur;
+  appState.dwell.posts[postId].questionAnswerDurationMs = dur;
+  fAns.history.push({
+   action: 'confirm',
+   value: fAns.score,
+   reason: fAns.reason,
+   source: fAns.source,
+   at: nowIso,
+   fgMs: nowFg
+  });
+  logEvent('answer_confirm', {
+   question: `post_${postId}`,
+   value: fAns.score,
+   reason: fAns.reason,
+   source: fAns.source,
+   durationMs: dur
+  });
+  const orderIds = appState.meta.postOrderIds || [1, 2, 3, 4, 5, 6];
+  const idxInOrder = orderIds.indexOf(postId);
+  if (idxInOrder >= 0 && appState.unlockedPostCount <= idxInOrder + 1 && appState.unlockedPostCount < 6) {
+   appState.unlockedPostCount = idxInOrder + 2;
+  }
+  renderFeedPosts();
+  updateStageHeaderBar();
+  saveProgressToStorage();
+  if (!appState.returningToReview && idxInOrder + 1 < orderIds.length) {
+   const nextPid = orderIds[idxInOrder + 1];
+   const nextCard = document.getElementById(`thread-post-card-${nextPid}`);
+   if (nextCard) {
+   setTimeout(() => {
+    nextCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+   }, 120);
+   }
+  }
+  });
+ }
+ const modBtn = mount.querySelector(`#btn-modify-feeling-${postId}`);
+ if (modBtn) {
+  modBtn.addEventListener('click', () => {
+  const nowIso = new Date().toISOString();
+  const nowFg = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+  fAns.confirmed = false;
+  fAns.firstShownAtFgMs = nowFg;
+  fAns.history.push({
+   action: 'modify_unlock',
+   value: fAns.score,
+   at: nowIso,
+   fgMs: nowFg
+  });
+  logEvent('answer_modify_unlock', { question: `post_${postId}` });
+  renderPostFeelingSection(postId);
+  checkAllPostsConfirmedCta();
+  updateStageHeaderBar();
+  saveProgressToStorage();
+  });
+ }
+ const retBtn = mount.querySelector(`#btn-return-s6-post-${postId}`);
+ if (retBtn) {
+  retBtn.addEventListener('click', () => {
+  if (!fAns.confirmed) {
+   confirmBtn.focus();
+   return;
+  }
+  navigateToReviewS6();
+  });
+ }
+ }
+ function checkAllPostsConfirmedCta() {
+ const cta = document.getElementById('feed-complete-cta');
+ if (!cta) return;
+ const allConfirmed = getConfirmedPostCount() === 6;
+ cta.style.display = allConfirmed ? 'block' : 'none';
+ }
+ function escapeHtmlAttr(str) {
+ return String(str || '')
+  .replace(/&/g, '&amp;')
+  .replace(/"/g, '&quot;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;');
+ }
+ /* =========================================================================
+ * 11. S5 後測、S6 回顧頁、S7 送出確認、S8 結果頁與 SHA-256 完整性檢查碼
+ * ========================================================================= */
+ function refreshPostTestS5UI() {
+ const postRec = appState.answers.postTest;
+ if (postRec.firstShownPerfMs === null) {
+  postRec.firstShownPerfMs = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+ }
+ renderStanceOptions('posttest-options-container', postRec, 'posttest_stance', val => {
+  recordStanceSelection('postTest', val);
+  refreshPostTestS5UI();
+ });
+ const btnConfirm = document.getElementById('btn-confirm-posttest');
+ const statusWrap = document.getElementById('posttest-confirmed-status');
+ const labelEl = document.getElementById('posttest-confirmed-label');
+ const btnGoS6 = document.getElementById('btn-go-s6');
+ if (postRec.confirmed) {
+  btnConfirm.style.display = 'none';
+  statusWrap.style.display = 'flex';
+  labelEl.textContent = postRec.value;
+  btnGoS6.disabled = false;
+ } else {
+  btnConfirm.style.display = 'inline-flex';
+  btnConfirm.disabled = !postRec.value;
+  statusWrap.style.display = 'none';
+  btnGoS6.disabled = true;
+ }
+ }
+ function navigateToReviewS6() {
+ appState.returningToReview = false;
+ switchLogicalScreen('S6');
+ showDomScreen('screen-S6');
+ logEvent('enter_review', {});
+ renderReviewPageS6();
+ }
+ function isEverythingConfirmed() {
+ if (!appState.answers.preTest.confirmed) return false;
+ for (const p of POSTS) {
+  if (!appState.answers.posts[p.id].confirmed) return false;
+ }
+ if (CONFIG.features.enablePostTest && !appState.answers.postTest.confirmed) return false;
+ return true;
+ }
+ function renderReviewPageS6() {
+ const container = document.getElementById('review-items-container');
+ const commContainer = document.getElementById('review-comments-container');
+ const warnBox = document.getElementById('review-unconfirmed-warning');
+ const submitBtn = document.getElementById('btn-open-submit-modal');
+ if (!container || !commContainer) return;
+ const orderIds = appState.meta.postOrderIds || [1, 2, 3, 4, 5, 6];
+ let html = '';
+ // 1. 前測政治立場
+ const pre = appState.answers.preTest;
+ html += `
+  <div style="padding:10px 12px; border:1px solid var(--border-color); border-radius:10px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+  <div>
+   <div style="font-size:12px; color:var(--text-secondary);">前測（S2）：請問您原先的政治立場？</div>
+   <div style="font-weight:700; font-size:14.5px;">${pre.value || '未填'} ${pre.confirmed ? '<span class="tag-flag ok">已確認</span>' : '<span class="tag-flag err">未確認</span>'}</div>
+  </div>
+  <button type="button" class="modify-link-btn" id="rev-mod-pretest">修改</button>
+  </div>
+ `;
+ // 2. 6 篇貼文感受題
+ orderIds.forEach((pid, idx) => {
+  const post = getPostById(pid);
+  const fAns = appState.answers.posts[pid];
+  const reasonStr = fAns.reason ? `｜原因：${escapeHtmlAttr(fAns.reason)}` : '';
+  const srcStr = fAns.source ? `｜來源：${escapeHtmlAttr(fAns.source)}` : '';
+  html += `
+  <div style="padding:10px 12px; border:1px solid var(--border-color); border-radius:10px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+   <div>
+   <div style="font-size:12px; color:var(--text-secondary);">貼文 ${idx + 1} (${post.region})：${post.topicShort}</div>
+   <div style="font-weight:700; font-size:14px;">
+    感受分數：${fAns.score !== null ? fAns.score + ' / 7' : '未選'}${srcStr}${reasonStr}
+    ${fAns.confirmed ? '<span class="tag-flag ok">已確認</span>' : '<span class="tag-flag err">未確認</span>'}
+   </div>
+   </div>
+   <button type="button" class="modify-link-btn rev-mod-post-btn" data-pid="${pid}">修改</button>
+  </div>
+  `;
+ });
+ // 3. 後測政治立場
+ if (CONFIG.features.enablePostTest) {
+  const postT = appState.answers.postTest;
+  html += `
+  <div style="padding:10px 12px; border:1px solid var(--border-color); border-radius:10px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+   <div>
+   <div style="font-size:12px; color:var(--text-secondary);">後測（S5）：請問您目前的政治立場？</div>
+   <div style="font-weight:700; font-size:14.5px;">${postT.value || '未填'} ${postT.confirmed ? '<span class="tag-flag ok">已確認</span>' : '<span class="tag-flag err">未確認</span>'}</div>
+   </div>
+   <button type="button" class="modify-link-btn" id="rev-mod-posttest">修改</button>
+  </div>
+  `;
+ }
+ container.innerHTML = html;
+ // 綁定前測修改
+ const btnModPre = document.getElementById('rev-mod-pretest');
+ if (btnModPre) {
+  btnModPre.addEventListener('click', () => {
+  appState.dwell.reviewPage.modifyCount += 1;
+  appState.returningToReview = true;
+  unlockStanceQuestion('preTest');
+  switchLogicalScreen('S2');
+  showDomScreen('screen-S1-S2');
+  refreshOpeningS1S2UI();
+  });
+ }
+ // 綁定各篇貼文感受修改
+ container.querySelectorAll('.rev-mod-post-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+  const pid = Number(btn.getAttribute('data-pid'));
+  appState.dwell.reviewPage.modifyCount += 1;
+  appState.returningToReview = true;
+  const fAns = appState.answers.posts[pid];
+  const nowIso = new Date().toISOString();
+  const nowFg = Math.round(appState.dwell.sessionTotal.activeForegroundMs);
+  fAns.confirmed = false;
+  fAns.firstShownAtFgMs = nowFg;
+  fAns.history.push({ action: 'modify_unlock_from_review', value: fAns.score, at: nowIso, fgMs: nowFg });
+  logEvent('answer_modify_unlock', { question: `post_${pid}`, from: 'review' });
+  switchLogicalScreen('S4');
+  showDomScreen('screen-S4');
+  renderFeedPosts();
+  setTimeout(() => {
+   const box = document.getElementById(`feeling-card-box-${pid}`) || document.getElementById(`thread-post-card-${pid}`);
+   if (box) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 100);
+  });
+ });
+ // 綁定後測修改
+ const btnModPost = document.getElementById('rev-mod-posttest');
+ if (btnModPost) {
+  btnModPost.addEventListener('click', () => {
+  appState.dwell.reviewPage.modifyCount += 1;
+  appState.returningToReview = true;
+  unlockStanceQuestion('postTest');
+  switchLogicalScreen('S5');
+  showDomScreen('screen-S5');
+  refreshPostTestS5UI();
+  });
+ }
+ // 4. 受試者自己的留言與撤回功能
+ if (appState.comments.length === 0) {
+  commContainer.innerHTML = `
+  <div style="padding:10px 12px; border-radius:10px; background:var(--bg-subtle); color:var(--text-secondary); font-size:13px;">
+   您在本次瀏覽中未發表任何留言。
+  </div>
+  `;
+ } else {
+  let commHtml = `<div style="font-weight:700; font-size:14px; margin-bottom:8px;">您發表的留言紀錄（共 ${appState.comments.length} 則）</div>`;
+  appState.comments.forEach(c => {
+  const p = getPostById(c.postId);
+  const replyInfo = c.replyTo ? `（回覆 @${escapeHtmlAttr(c.replyTo)}）` : '';
+  commHtml += `
+   <div style="padding:10px 12px; border:1px solid var(--border-color); border-radius:10px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+   <div>
+    <div style="font-size:12px; color:var(--text-secondary);">貼文 #${c.postId} (${p ? p.topicShort : ''}) ${replyInfo}</div>
+    <div style="font-size:13.5px; ${c.retracted ? 'text-decoration:line-through; color:var(--text-muted);' : 'font-weight:600;'}">
+    ${escapeHtmlAttr(c.text)}
+    </div>
+    ${c.retracted ? '<span class="tag-flag warn" style="margin-top:4px;">已撤回（紀錄保留）</span>' : ''}
+   </div>
+   ${(CONFIG.features.enableCommentRetract && !c.retracted) ? `
+    <button type="button" class="modify-link-btn rev-retract-comm-btn" data-cid="${c.id}" style="color:var(--heart-red);">撤回</button>
+   ` : ''}
+   </div>
+  `;
+  });
+  commContainer.innerHTML = commHtml;
+  commContainer.querySelectorAll('.rev-retract-comm-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+   const cid = btn.getAttribute('data-cid');
+   const target = appState.comments.find(x => x.id === cid);
+   if (target && !target.retracted) {
+   target.retracted = true;
+   target.retractedAt = new Date().toISOString();
+   appState.dwell.reviewPage.modifyCount += 1;
+   logEvent('comment_retract', { commentId: cid, postId: target.postId });
+   renderReviewPageS6();
+   saveProgressToStorage();
+   }
+  });
+  });
+ }
+ const allOk = isEverythingConfirmed();
+ if (warnBox) warnBox.style.display = allOk ? 'none' : 'block';
+ if (submitBtn) submitBtn.disabled = !allOk;
+ }
+ /* =========================================================================
+ * 12. 完整性檢查碼 (優先 SHA-256，環境不支援時改用非密碼學雜湊 FNV1a-64)
+ * ========================================================================= */
+ function buildCanonicalExportPayload(stateSource) {
+ // 複製並正規化毫秒整數，排除 integrity 本身以計算可重現的雜湊檢查碼
+ const screensClean = {};
+ Object.keys(stateSource.dwell.screens).sort().forEach(k => {
+  const s = stateSource.dwell.screens[k];
+  screensClean[k] = {
+  visibleMs: Math.round(s.visibleMs || 0),
+  enterCount: s.enterCount || 0,
+  firstEnterAt: s.firstEnterAt !== null ? Math.round(s.firstEnterAt) : null,
+  lastLeaveAt: s.lastLeaveAt !== null ? Math.round(s.lastLeaveAt) : null
+  };
+ });
+ const postsDwellClean = {};
+ Object.keys(stateSource.dwell.posts).sort((a, b) => Number(a) - Number(b)).forEach(k => {
+  const pd = stateSource.dwell.posts[k];
+  postsDwellClean[k] = {
+  postId: Number(k),
+  startedAtFgMs: pd.startedAtFgMs !== null ? Math.round(pd.startedAtFgMs) : null,
+  postVisibleMs: Math.round(pd.postVisibleMs || 0),
+  commentsExpandedMs: Math.round(pd.commentsExpandedMs || 0),
+  firstExpandDelayMs: pd.firstExpandDelayMs !== null ? Math.round(pd.firstExpandDelayMs) : null,
+  expandCount: pd.expandCount || 0,
+  inputFocusMs: Math.round(pd.inputFocusMs || 0),
+  firstCommentDelayMs: pd.firstCommentDelayMs !== null ? Math.round(pd.firstCommentDelayMs) : null,
+  questionAnswerDurationMs: Math.round(pd.questionAnswerDurationMs || 0),
+  scheduledIntervalsMs: pd.scheduledIntervalsMs
+  };
+ });
+ return {
+  meta: {
+  version: stateSource.meta.version,
+  orderVersion: stateSource.meta.orderVersion,
+  postOrderIds: stateSource.meta.postOrderIds,
+  participantId: stateSource.meta.participantId,
+  screenWidth: stateSource.meta.screenWidth,
+  isTouch: stateSource.meta.isTouch,
+  language: stateSource.meta.language,
+  startedAt: stateSource.meta.startedAt,
+  endedAt: stateSource.meta.endedAt
+  },
+  consent: {
+  ageConfirmed: stateSource.consent.ageConfirmed,
+  consentConfirmed: stateSource.consent.consentConfirmed,
+  consentedAt: stateSource.consent.consentedAt
+  },
+  answers: stateSource.answers,
+  comments: stateSource.comments,
+  dwell: {
+  screens: screensClean,
+  posts: postsDwellClean,
+  reviewPage: {
+   visibleMs: Math.round(stateSource.dwell.reviewPage.visibleMs || 0),
+   modifyCount: stateSource.dwell.reviewPage.modifyCount || 0
+  },
+  sessionTotal: {
+   wallClockMs: Math.round(stateSource.dwell.sessionTotal.wallClockMs || 0),
+   activeForegroundMs: Math.round(stateSource.dwell.sessionTotal.activeForegroundMs || 0)
+  }
+  },
+  events: stateSource.events
+ };
+ }
+ function fnv1a64FallbackHex(str) {
+ let h1 = 0xdeadbeef ^ str.length;
+ let h2 = 0x41c6ce57 ^ str.length;
+ for (let i = 0; i < str.length; i++) {
+  const ch = str.charCodeAt(i);
+  h1 = Math.imul(h1 ^ ch, 2654435761);
+  h2 = Math.imul(h2 ^ ch, 1597334677);
+ }
+ h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+ h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+ const p1 = (h1 >>> 0).toString(16).padStart(8, '0');
+ const p2 = (h2 >>> 0).toString(16).padStart(8, '0');
+ return (p1 + p2 + p1 + p2).toLowerCase();
+ }
+ async function computeIntegrityHash(canonicalPayloadObj, forceAlgorithm = null) {
+ const jsonStr = JSON.stringify(canonicalPayloadObj);
+ const canUseSubtle = (forceAlgorithm !== 'FNV1a-64-Fallback') &&
+  typeof window.crypto !== 'undefined' &&
+  window.crypto.subtle &&
+  typeof window.crypto.subtle.digest === 'function' &&
+  typeof TextEncoder !== 'undefined';
+ if (canUseSubtle) {
+  try {
+  const buf = new TextEncoder().encode(jsonStr);
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', buf);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return {
+   algorithm: 'SHA-256',
+   checksum: hex,
+   deliveryCode: hex.slice(0, 8).toUpperCase()
+  };
+  } catch (err) {}
+ }
+ const fallbackHex = fnv1a64FallbackHex(jsonStr);
+ return {
+  algorithm: 'FNV1a-64-Fallback',
+  checksum: fallbackHex,
+  deliveryCode: fallbackHex.slice(0, 8).toUpperCase()
+ };
+ }
+ function formatExportFilename(participantId, isoDateStr) {
+ const pid = (participantId || 'P000').toUpperCase();
+ const d = isoDateStr ? new Date(isoDateStr) : new Date();
+ const yyyy = d.getFullYear();
+ const mm = String(d.getMonth() + 1).padStart(2, '0');
+ const dd = String(d.getDate()).padStart(2, '0');
+ const hh = String(d.getHours()).padStart(2, '0');
+ const min = String(d.getMinutes()).padStart(2, '0');
+ return `study_${pid}_${yyyy}${mm}${dd}_${hh}${min}.json`;
+ }
+ let finalExportJsonString = '';
+ let finalExportFilename = 'study.json';
+ async function finalizeAndEnterResultsS8() {
+ if (!appState.submitted) {
+  appState.submitted = true;
+  appState.meta.endedAt = new Date().toISOString();
+  logEvent('submit_confirm', { endedAt: appState.meta.endedAt });
+ }
+ switchLogicalScreen('S8');
+ showDomScreen('screen-S8');
+ const canonicalPayload = buildCanonicalExportPayload(appState);
+ const integrityObj = await computeIntegrityHash(canonicalPayload);
+ appState.integrity = integrityObj;
+ const fullExportObj = Object.assign({}, canonicalPayload, {
+  integrity: integrityObj
+ });
+ finalExportJsonString = JSON.stringify(fullExportObj, null, 2);
+ finalExportFilename = formatExportFilename(appState.meta.participantId, appState.meta.endedAt);
+ markParticipantIdCompleted(appState.meta.participantId);
+ saveProgressToStorage();
+ renderResultsPageS8(fullExportObj);
+ }
+ function renderResultsPageS8(exportObj) {
+ const codeEl = document.getElementById('result-delivery-code');
+ const algoEl = document.getElementById('result-algo-note');
+ const fnameEl = document.getElementById('download-filename-preview');
+ const debriefBox = document.getElementById('debrief-content-box');
+ const chartBox = document.getElementById('result-feeling-chart');
+ const ansSummary = document.getElementById('result-answers-summary');
+ const dwellSummary = document.getElementById('result-dwell-summary');
+ if (codeEl) codeEl.textContent = exportObj.integrity.deliveryCode;
+ if (algoEl) algoEl.textContent = `雜湊演算法：${exportObj.integrity.algorithm}｜檢查碼前16碼：${exportObj.integrity.checksum.slice(0, 16)}…`;
+ if (fnameEl) fnameEl.textContent = finalExportFilename;
+ if (debriefBox) debriefBox.innerHTML = CONFIG.debriefHtml;
+ // 感受長條圖 (中性灰階)
+ if (chartBox) {
+  const orderIds = exportObj.meta.postOrderIds || [1, 2, 3, 4, 5, 6];
+  let barsHtml = '';
+  orderIds.forEach((pid, idx) => {
+  const post = getPostById(pid);
+  const fAns = exportObj.answers.posts[pid];
+  const score = fAns.score || 0;
+  const pct = Math.round((score / 7) * 100);
+  barsHtml += `
+   <div style="margin-bottom:10px;">
+   <div style="display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:3px;">
+    <span>貼文 ${idx + 1} (${post.region})：${post.topicShort}</span>
+    <strong>${score} / 7</strong>
+   </div>
+   <div style="width:100%; height:14px; background:var(--bg-subtle); border-radius:7px; overflow:hidden; border:1px solid var(--border-color);">
+    <div style="width:${pct}%; height:100%; background:var(--text-secondary);"></div>
+   </div>
+   </div>
+  `;
+  });
+  chartBox.innerHTML = barsHtml;
+ }
+ if (ansSummary) {
+  ansSummary.innerHTML = `
+  <div style="padding:8px 10px; background:var(--bg-subtle); border-radius:8px;">
+   <div><strong>受試者編號：</strong>${exportObj.meta.participantId}（順序：${exportObj.meta.orderVersion === 'odd_taipei_first' ? '奇數台北先' : '偶數新北先'}）</div>
+   <div><strong>前測政治立場：</strong>${exportObj.answers.preTest.value}</div>
+   <div><strong>後測政治立場：</strong>${exportObj.answers.postTest.value || '未啟用'}</div>
+   <div><strong>發表留言數：</strong>${exportObj.comments.filter(c => !c.retracted).length} 則（已撤回：${exportObj.comments.filter(c => c.retracted).length} 則）</div>
+  </div>
+  `;
+ }
+ if (dwellSummary) {
+  const orderIds = exportObj.meta.postOrderIds || [1, 2, 3, 4, 5, 6];
+  let dHtml = `<div style="margin-bottom:8px;"><strong>總有效前景時間：</strong>${(exportObj.dwell.sessionTotal.activeForegroundMs / 1000).toFixed(1)} 秒（牆鐘時間：${(exportObj.dwell.sessionTotal.wallClockMs / 1000).toFixed(1)} 秒）</div>`;
+  dHtml += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">`;
+  orderIds.forEach((pid, idx) => {
+  const pd = exportObj.dwell.posts[pid];
+  dHtml += `
+   <div style="padding:6px 8px; background:var(--bg-subtle); border-radius:6px; font-size:12px;">
+   <div><strong>貼文 ${idx + 1} (#${pid})</strong></div>
+   <div>可見：${(pd.postVisibleMs / 1000).toFixed(1)}s｜展開：${(pd.commentsExpandedMs / 1000).toFixed(1)}s</div>
+   <div>作答耗時：${(pd.questionAnswerDurationMs / 1000).toFixed(1)}s</div>
+   </div>
+  `;
+  });
+  dHtml += `</div>`;
+  dwellSummary.innerHTML = dHtml;
+ }
+ }
+ function showDeliveryToast(msg) {
+ const t = document.getElementById('delivery-action-toast');
+ if (!t) return;
+ t.style.display = 'block';
+ t.textContent = msg;
+ }
+ function downloadJsonFile() {
+ if (!finalExportJsonString) return;
+ const blob = new Blob([finalExportJsonString], { type: 'application/json;charset=utf-8' });
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement('a');
+ a.href = url;
+ a.download = finalExportFilename;
+ document.body.appendChild(a);
+ a.click();
+ document.body.removeChild(a);
+ setTimeout(() => URL.revokeObjectURL(url), 2000);
+ appState.hasDownloaded = true;
+ saveProgressToStorage();
+ showDeliveryToast(`✓ 已觸發下載：${finalExportFilename}（交付碼：${appState.integrity.deliveryCode}）`);
+ }
+ async function shareJsonFile() {
+ if (!finalExportJsonString) return;
+ if (navigator.share) {
+  try {
+  const file = new File([finalExportJsonString], finalExportFilename, { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+   await navigator.share({
+   title: `研究資料檔 ${finalExportFilename}`,
+   text: `受試者編號：${appState.meta.participantId}｜交付碼：${appState.integrity.deliveryCode}`,
+   files: [file]
+   });
+   appState.hasDownloaded = true;
+   saveProgressToStorage();
+   showDeliveryToast('✓ 已透過系統分享傳送資料檔！');
+   return;
+  }
+  await navigator.share({
+   title: `研究資料檔 ${finalExportFilename}`,
+   text: finalExportJsonString
+  });
+  appState.hasDownloaded = true;
+  saveProgressToStorage();
+  showDeliveryToast('✓ 已透過系統分享傳送資料內容！');
+  return;
+  } catch (err) {}
+ }
+ showDeliveryToast('此瀏覽器不支援直接檔案分享，已為您改用下載資料檔。');
+ downloadJsonFile();
+ }
+ function copyJsonToClipboard() {
+ if (!finalExportJsonString) return;
+ if (navigator.clipboard && navigator.clipboard.writeText) {
+  navigator.clipboard.writeText(finalExportJsonString).then(() => {
+  appState.hasDownloaded = true;
+  saveProgressToStorage();
+  showDeliveryToast(`✓ 已複製完整 JSON 資料至剪貼簿！（交付碼：${appState.integrity.deliveryCode}）`);
+  }).catch(() => fallbackCopyText(finalExportJsonString));
+ } else {
+  fallbackCopyText(finalExportJsonString);
+ }
+ }
+ function fallbackCopyText(text) {
+ const ta = document.createElement('textarea');
+ ta.value = text;
+ ta.style.position = 'fixed';
+ ta.style.left = '-9999px';
+ document.body.appendChild(ta);
+ ta.select();
+ try {
+  document.execCommand('copy');
+  appState.hasDownloaded = true;
+  saveProgressToStorage();
+  showDeliveryToast(`✓ 已複製完整 JSON 資料至剪貼簿！（交付碼：${appState.integrity.deliveryCode}）`);
+ } catch (err) {
+  showDeliveryToast('複製失敗，請點擊上方「下載資料檔」按鈕。');
+ }
+ document.body.removeChild(ta);
+ }
+ /* =========================================================================
+ * 13. 研究者模式 (#researcher)：多檔匯入、完整性檢查碼驗證、統計表與 CSV 匯出
+ * ========================================================================= */
+ let researcherRecords = [];
+ function calcMean(arr) {
+ if (!arr || arr.length === 0) return null;
+ return arr.reduce((a, b) => a + b, 0) / arr.length;
+ }
+ function calcSd(arr) {
+ if (!arr || arr.length <= 1) return 0;
+ const m = calcMean(arr);
+ const variance = arr.reduce((acc, v) => acc + Math.pow(v - m, 2), 0) / (arr.length - 1);
+ return Math.sqrt(variance);
+ }
+ function calcMedian(arr) {
+ if (!arr || arr.length === 0) return null;
+ const sorted = arr.slice().sort((a, b) => a - b);
+ const mid = Math.floor(sorted.length / 2);
+ return sorted.length % 2 !== 0
+  ? sorted[mid]
+  : (sorted[mid - 1] + sorted[mid]) / 2;
+ }
+ function fmtMeanSd(arr) {
+ if (!arr || arr.length === 0) return '-';
+ const m = calcMean(arr).toFixed(2);
+ const sd = calcSd(arr).toFixed(2);
+ return `${m} (${sd}) [n=${arr.length}]`;
+ }
+ async function validateImportedJsonRecord(fileName, parsedObj) {
+ const flags = [];
+ let isIntegrityOk = false;
+ if (!parsedObj || typeof parsedObj !== 'object' || !parsedObj.meta || !parsedObj.answers || !parsedObj.dwell) {
+  return {
+  fileName,
+  validStructure: false,
+  participantId: '無效檔案',
+  flags: [{ type: 'err', label: '結構缺漏' }],
+  raw: parsedObj
+  };
+ }
+ // 1. 格式版本檢查
+ if (parsedObj.meta.version !== CONFIG.version) {
+  flags.push({ type: 'warn', label: `版本不符 (${parsedObj.meta.version || '未知'})` });
+ }
+ // 2. 完整性檢查碼驗證 (竄改一個字元即報錯)
+ try {
+  const canonical = buildCanonicalExportPayload(parsedObj);
+  const preferredAlgo = (parsedObj.integrity && parsedObj.integrity.algorithm) ? parsedObj.integrity.algorithm : null;
+  const recomputed = await computeIntegrityHash(canonical, preferredAlgo);
+  if (
+  parsedObj.integrity &&
+  parsedObj.integrity.checksum &&
+  recomputed.checksum === parsedObj.integrity.checksum &&
+  recomputed.deliveryCode === parsedObj.integrity.deliveryCode
+  ) {
+  isIntegrityOk = true;
+  } else {
+  flags.push({ type: 'err', label: '檢查碼不符 (檔案損毀或遭竄改)' });
+  }
+ } catch (e) {
+  flags.push({ type: 'err', label: '檢查碼運算失敗' });
+ }
+ // 3. 未完成檢查
+ let completeAnswers = true;
+ if (!parsedObj.answers.preTest || !parsedObj.answers.preTest.confirmed || !parsedObj.answers.preTest.value) {
+  completeAnswers = false;
+ }
+ for (let pid = 1; pid <= 6; pid++) {
+  const pAns = parsedObj.answers.posts && parsedObj.answers.posts[pid];
+  if (!pAns || !pAns.confirmed || typeof pAns.score !== 'number') {
+  completeAnswers = false;
+  }
+ }
+ if (CONFIG.features.enablePostTest && (!parsedObj.answers.postTest || !parsedObj.answers.postTest.confirmed)) {
+  completeAnswers = false;
+ }
+ if (!completeAnswers || !parsedObj.meta.endedAt) {
+  flags.push({ type: 'err', label: '未完成作答' });
+ }
+ // 4. 異常快速檢查 (總有效前景時間低於門檻)
+ const totalFg = (parsedObj.dwell.sessionTotal && parsedObj.dwell.sessionTotal.activeForegroundMs) || 0;
+ if (totalFg < CONFIG.validation.minValidTotalMs) {
+  flags.push({ type: 'warn', label: `異常快速 (${(totalFg / 1000).toFixed(1)}s)` });
+ }
+ // 5. 感受題全部同值檢查
+ const scores = [];
+ for (let pid = 1; pid <= 6; pid++) {
+  const pAns = parsedObj.answers.posts && parsedObj.answers.posts[pid];
+  if (pAns && typeof pAns.score === 'number') scores.push(pAns.score);
+ }
+ if (scores.length === 6 && scores.every(s => s === scores[0])) {
+  flags.push({ type: 'warn', label: `感受題全同值 (皆為 ${scores[0]})` });
+ }
+ return {
+  fileName,
+  validStructure: true,
+  participantId: (parsedObj.meta.participantId || '未填').toUpperCase(),
+  isIntegrityOk,
+  flags,
+  raw: parsedObj
+ };
+ }
+ async function refreshResearcherDashboard() {
+ // 檢查重複受試者編號
+ const pidCounts = {};
+ researcherRecords.forEach(r => {
+  if (r.validStructure) {
+  pidCounts[r.participantId] = (pidCounts[r.participantId] || 0) + 1;
+  }
+ });
+ researcherRecords.forEach(r => {
+  r.allFlags = (r.flags || []).slice();
+  if (r.validStructure && pidCounts[r.participantId] > 1) {
+  r.allFlags.push({ type: 'warn', label: '重複編號' });
+  }
+ });
+ const totalCount = researcherRecords.length;
+ const flaggedCount = researcherRecords.filter(r => !r.validStructure || r.allFlags.length > 0).length;
+ const cleanCount = totalCount - flaggedCount;
+ document.getElementById('res-count-total').textContent = String(totalCount);
+ document.getElementById('res-count-valid').textContent = String(cleanCount);
+ document.getElementById('res-count-flagged').textContent = String(flaggedCount);
+ const hasValid = researcherRecords.some(r => r.validStructure);
+ document.getElementById('btn-export-long-csv').disabled = !hasValid;
+ document.getElementById('btn-export-wide-csv').disabled = !hasValid;
+ renderResearcherRosterTable();
+ renderResearcherFeelingTable();
+ renderResearcherEngagementTable();
+ renderResearcherScreenDwellTable();
+ renderResearcherStanceMatrix();
+ renderResearcherCommentsList();
+ }
+ function renderResearcherRosterTable() {
+ const tbody = document.querySelector('#res-table-roster tbody');
+ if (!tbody) return;
+ if (researcherRecords.length === 0) {
+  tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-secondary);">請匯入受試者 JSON 資料檔或點擊「載入 12 份模擬驗收樣本」</td></tr>`;
+  return;
+ }
+ tbody.innerHTML = researcherRecords.map(r => {
+  if (!r.validStructure) {
+  return `<tr>
+   <td>${escapeHtmlAttr(r.fileName)}</td>
+   <td colspan="7">JSON 格式或欄位缺漏</td>
+   <td><span class="tag-flag err">格式錯誤</span></td>
+  </tr>`;
+  }
+  const d = r.raw;
+  const orderLabel = d.meta.orderVersion === 'odd_taipei_first' ? '奇數 (台北先)' : '偶數 (新北先)';
+  const pre = (d.answers.preTest && d.answers.preTest.value) || '-';
+  const post = (d.answers.postTest && d.answers.postTest.value) || '-';
+  const fgSec = ((d.dwell.sessionTotal.activeForegroundMs || 0) / 1000).toFixed(1) + 's';
+  const deliv = (d.integrity && d.integrity.deliveryCode) || '-';
+  const algo = (d.integrity && d.integrity.algorithm) || '-';
+  const badgeHtml = r.allFlags.length === 0
+  ? `<span class="tag-flag ok">✓ 驗證通過</span>`
+  : r.allFlags.map(f => `<span class="tag-flag ${f.type}">${escapeHtmlAttr(f.label)}</span>`).join('');
+  return `<tr>
+  <td>${escapeHtmlAttr(r.fileName)}</td>
+  <td><strong>${escapeHtmlAttr(r.participantId)}</strong></td>
+  <td>${orderLabel}</td>
+  <td>${escapeHtmlAttr(pre)}</td>
+  <td>${escapeHtmlAttr(post)}</td>
+  <td>${fgSec}</td>
+  <td style="font-family:monospace; font-weight:700;">${escapeHtmlAttr(deliv)}</td>
+  <td>${escapeHtmlAttr(algo)}</td>
+  <td>${badgeHtml}</td>
+  </tr>`;
+ }).join('');
+ }
+ function renderResearcherFeelingTable() {
+ const tbody = document.querySelector('#res-table-feeling-by-stance tbody');
+ if (!tbody) return;
+ const validList = researcherRecords.filter(r => r.validStructure);
+ if (validList.length === 0) {
+  tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-secondary);">尚無資料</td></tr>`;
+  return;
+ }
+ tbody.innerHTML = POSTS.map(post => {
+  const allScores = [];
+  const byStance = {};
+  CONFIG.stanceOptions.forEach(s => { byStance[s] = []; });
+  validList.forEach(r => {
+  const preStance = r.raw.answers.preTest && r.raw.answers.preTest.value;
+  const pAns = r.raw.answers.posts && r.raw.answers.posts[post.id];
+  if (pAns && typeof pAns.score === 'number') {
+   allScores.push(pAns.score);
+   if (byStance[preStance]) {
+   byStance[preStance].push(pAns.score);
+   }
+  }
+  });
+  const cols = CONFIG.stanceOptions.map(s => `<td>${fmtMeanSd(byStance[s])}</td>`).join('');
+  return `<tr>
+  <td><strong>#${post.id} (${post.region})</strong> ${post.topicShort}</td>
+  <td><strong>${fmtMeanSd(allScores)}</strong></td>
+  ${cols}
+  </tr>`;
+ }).join('');
+ }
+ function renderResearcherEngagementTable() {
+ const tbody = document.querySelector('#res-table-engagement tbody');
+ if (!tbody) return;
+ const validList = researcherRecords.filter(r => r.validStructure);
+ if (validList.length === 0) {
+  tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-secondary);">尚無資料</td></tr>`;
+  return;
+ }
+ tbody.innerHTML = POSTS.map(post => {
+  const visList = [];
+  const expTimeList = [];
+  const firstExpDelayList = [];
+  const ansDurList = [];
+  let expandedUsers = 0;
+  let repliedUsers = 0;
+  validList.forEach(r => {
+  const pd = r.raw.dwell.posts && r.raw.dwell.posts[post.id];
+  if (pd) {
+   visList.push(pd.postVisibleMs || 0);
+   expTimeList.push(pd.commentsExpandedMs || 0);
+   ansDurList.push(pd.questionAnswerDurationMs || 0);
+   if ((pd.expandCount || 0) > 0 || pd.firstExpandDelayMs !== null) {
+   expandedUsers += 1;
+   if (typeof pd.firstExpandDelayMs === 'number') {
+    firstExpDelayList.push(pd.firstExpandDelayMs);
+   }
+   }
+  }
+  const userComms = (r.raw.comments || []).filter(c => c.postId === post.id && !c.retracted);
+  if (userComms.length > 0) {
+   repliedUsers += 1;
+  }
+  });
+  const n = validList.length;
+  const expandRate = ((expandedUsers / n) * 100).toFixed(1) + '%';
+  const replyRate = ((repliedUsers / n) * 100).toFixed(1) + '%';
+  const medDelay = firstExpDelayList.length > 0 ? Math.round(calcMedian(firstExpDelayList)) : '-';
+  return `<tr>
+  <td><strong>#${post.id} (${post.region})</strong> ${post.topicShort}</td>
+  <td>${post.mentionLabel}</td>
+  <td>${Math.round(calcMean(visList) || 0)}</td>
+  <td>${expandRate} (${expandedUsers}/${n})</td>
+  <td>${medDelay}</td>
+  <td>${Math.round(calcMean(expTimeList) || 0)}</td>
+  <td>${replyRate} (${repliedUsers}/${n})</td>
+  <td>${Math.round(calcMean(ansDurList) || 0)}</td>
+  </tr>`;
+ }).join('');
+ }
+ function renderResearcherScreenDwellTable() {
+ const tbody = document.querySelector('#res-table-screen-dwell tbody');
+ if (!tbody) return;
+ const validList = researcherRecords.filter(r => r.validStructure);
+ if (validList.length === 0) {
+  tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">尚無資料</td></tr>`;
+  return;
+ }
+ const screenNames = {
+  S1: 'S1 入口與同意書',
+  S2: 'S2 前測政治立場',
+  S3: 'S3 操作說明',
+  S4: 'S4 貼文瀏覽區',
+  S5: 'S5 後測政治立場',
+  S6: 'S6 回顧確認頁',
+  S7: 'S7 送出確認框',
+  S8: 'S8 結果與交付頁'
+ };
+ tbody.innerHTML = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'].map(sKey => {
+  const msArr = [];
+  const cntArr = [];
+  validList.forEach(r => {
+  const sc = r.raw.dwell.screens && r.raw.dwell.screens[sKey];
+  if (sc) {
+   msArr.push(sc.visibleMs || 0);
+   cntArr.push(sc.enterCount || 0);
+  }
+  });
+  return `<tr>
+  <td><strong>${screenNames[sKey]}</strong></td>
+  <td>${Math.round(calcMean(msArr) || 0)}</td>
+  <td>${Math.round(calcMedian(msArr) || 0)}</td>
+  <td>${Math.round(calcSd(msArr) || 0)}</td>
+  <td>${(calcMean(cntArr) || 0).toFixed(2)}</td>
+  </tr>`;
+ }).join('');
+ }
+ function renderResearcherStanceMatrix() {
+ const tbody = document.querySelector('#res-table-stance-matrix tbody');
+ if (!tbody) return;
+ const validList = researcherRecords.filter(r => r.validStructure);
+ if (validList.length === 0) {
+  tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-secondary);">尚無資料</td></tr>`;
+  return;
+ }
+ const matrix = {};
+ CONFIG.stanceOptions.forEach(pre => {
+  matrix[pre] = {};
+  CONFIG.stanceOptions.forEach(post => { matrix[pre][post] = 0; });
+ });
+ validList.forEach(r => {
+  const pre = (r.raw.answers.preTest && r.raw.answers.preTest.value) || '不願回答';
+  const post = (r.raw.answers.postTest && r.raw.answers.postTest.value) || pre;
+  if (matrix[pre] && typeof matrix[pre][post] === 'number') {
+  matrix[pre][post] += 1;
+  }
+ });
+ tbody.innerHTML = CONFIG.stanceOptions.map(pre => {
+  let changed = 0;
+  const cells = CONFIG.stanceOptions.map(post => {
+  const cnt = matrix[pre][post];
+  if (pre !== post) changed += cnt;
+  const highlight = (pre === post && cnt > 0) ? 'font-weight:800;' : (cnt > 0 ? 'color:var(--accent-blue); font-weight:700;' : 'color:var(--text-muted);');
+  return `<td style="${highlight}">${cnt}</td>`;
+  }).join('');
+  return `<tr>
+  <td><strong>${pre}</strong></td>
+  ${cells}
+  <td><strong>${changed}</strong></td>
+  </tr>`;
+ }).join('');
+ }
+ function renderResearcherCommentsList() {
+ const tbody = document.querySelector('#res-table-comments-list tbody');
+ if (!tbody) return;
+ const rows = [];
+ researcherRecords.filter(r => r.validStructure).forEach(r => {
+  const pre = (r.raw.answers.preTest && r.raw.answers.preTest.value) || '-';
+  (r.raw.comments || []).forEach(c => {
+  rows.push({
+   pid: r.participantId,
+   pre,
+   postId: c.postId,
+   replyTo: c.replyTo || '-',
+   text: c.text,
+   fgMs: c.fgMs || c.perfMs || 0,
+   retracted: !!c.retracted
+  });
+  });
+ });
+ if (rows.length === 0) {
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-secondary);">尚無受試者留言紀錄</td></tr>`;
+  return;
+ }
+ tbody.innerHTML = rows.map(item => `
+  <tr>
+  <td><strong>${escapeHtmlAttr(item.pid)}</strong></td>
+  <td>${escapeHtmlAttr(item.pre)}</td>
+  <td>貼文 #${item.postId}</td>
+  <td>${escapeHtmlAttr(item.replyTo)}</td>
+  <td style="white-space:normal; min-width:220px;">${escapeHtmlAttr(item.text)}</td>
+  <td>${item.fgMs}</td>
+  <td>${item.retracted ? '<span class="tag-flag warn">已撤回</span>' : '<span class="tag-flag ok">正常顯示</span>'}</td>
+  </tr>
+ `).join('');
+ }
+ function csvCell(val) {
+ if (val === null || val === undefined) return '""';
+ const s = String(val).replace(/"/g, '""');
+ return `"${s}"`;
+ }
+ function triggerCsvDownload(filename, rowsArray) {
+ const csvContent = '\uFEFF' + rowsArray.map(r => r.map(csvCell).join(',')).join('\r\n');
+ const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement('a');
+ a.href = url;
+ a.download = filename;
+ document.body.appendChild(a);
+ a.click();
+ document.body.removeChild(a);
+ setTimeout(() => URL.revokeObjectURL(url), 2000);
+ }
+ function exportLongCsv() {
+ const validList = researcherRecords.filter(r => r.validStructure);
+ if (validList.length === 0) return;
+ const header = [
+  'participant_id', 'order_version', 'pre_stance', 'post_stance', 'stance_changed',
+  'post_id', 'post_region', 'mention_type', 'feeling_score', 'feeling_reason', 'feeling_source',
+  'feeling_modify_count', 'post_visible_ms', 'comments_expanded_ms', 'first_expand_delay_ms',
+  'input_focus_ms', 'first_comment_delay_ms', 'question_answer_duration_ms',
+  'user_comment_count_on_post', 'session_active_fg_ms', 'delivery_code', 'integrity_valid', 'flags'
+ ];
+ const rows = [header];
+ validList.forEach(r => {
+  const d = r.raw;
+  const pre = (d.answers.preTest && d.answers.preTest.value) || '';
+  const post = (d.answers.postTest && d.answers.postTest.value) || '';
+  const changed = (pre && post && pre !== post) ? 1 : 0;
+  const flagStr = r.allFlags.map(f => f.label).join(';');
+  POSTS.forEach(p => {
+  const fAns = (d.answers.posts && d.answers.posts[p.id]) || {};
+  const pd = (d.dwell.posts && d.dwell.posts[p.id]) || {};
+  const uComms = (d.comments || []).filter(c => c.postId === p.id && !c.retracted);
+  rows.push([
+   r.participantId,
+   d.meta.orderVersion || '',
+   pre,
+   post,
+   changed,
+   p.id,
+   p.region,
+   p.mentionType,
+   fAns.score !== null ? fAns.score : '',
+   fAns.reason || '',
+   fAns.source || '',
+   (fAns.history || []).length,
+   pd.postVisibleMs || 0,
+   pd.commentsExpandedMs || 0,
+   pd.firstExpandDelayMs !== null ? pd.firstExpandDelayMs : '',
+   pd.inputFocusMs || 0,
+   pd.firstCommentDelayMs !== null ? pd.firstCommentDelayMs : '',
+   pd.questionAnswerDurationMs || 0,
+   uComms.length,
+   d.dwell.sessionTotal.activeForegroundMs || 0,
+   (d.integrity && d.integrity.deliveryCode) || '',
+   r.isIntegrityOk ? 1 : 0,
+   flagStr
+  ]);
+  });
+ });
+ triggerCsvDownload('threads_study_long_table.csv', rows);
+ }
+ function exportWideCsv() {
+ const validList = researcherRecords.filter(r => r.validStructure);
+ if (validList.length === 0) return;
+ const header = [
+  'participant_id', 'order_version', 'pre_stance', 'post_stance', 'stance_changed',
+  'session_wall_ms', 'session_active_fg_ms', 'review_visible_ms', 'review_modify_count',
+  'total_active_comments', 'total_retracted_comments', 'delivery_code', 'integrity_valid', 'flags'
+ ];
+ for (let pid = 1; pid <= 6; pid++) {
+  header.push(
+  `p${pid}_score`, `p${pid}_source`, `p${pid}_reason`,
+  `p${pid}_visible_ms`, `p${pid}_expanded_ms`, `p${pid}_first_expand_delay_ms`, `p${pid}_answer_dur_ms`
+  );
+ }
+ const rows = [header];
+ validList.forEach(r => {
+  const d = r.raw;
+  const pre = (d.answers.preTest && d.answers.preTest.value) || '';
+  const post = (d.answers.postTest && d.answers.postTest.value) || '';
+  const changed = (pre && post && pre !== post) ? 1 : 0;
+  const activeComms = (d.comments || []).filter(c => !c.retracted).length;
+  const retComms = (d.comments || []).filter(c => c.retracted).length;
+  const flagStr = r.allFlags.map(f => f.label).join(';');
+  const row = [
+  r.participantId,
+  d.meta.orderVersion || '',
+  pre,
+  post,
+  changed,
+  d.dwell.sessionTotal.wallClockMs || 0,
+  d.dwell.sessionTotal.activeForegroundMs || 0,
+  (d.dwell.reviewPage && d.dwell.reviewPage.visibleMs) || 0,
+  (d.dwell.reviewPage && d.dwell.reviewPage.modifyCount) || 0,
+  activeComms,
+  retComms,
+  (d.integrity && d.integrity.deliveryCode) || '',
+  r.isIntegrityOk ? 1 : 0,
+  flagStr
+  ];
+  for (let pid = 1; pid <= 6; pid++) {
+  const fAns = (d.answers.posts && d.answers.posts[pid]) || {};
+  const pd = (d.dwell.posts && d.dwell.posts[pid]) || {};
+  row.push(
+   fAns.score !== null ? fAns.score : '',
+   fAns.source || '',
+   fAns.reason || '',
+   pd.postVisibleMs || 0,
+   pd.commentsExpandedMs || 0,
+   pd.firstExpandDelayMs !== null ? pd.firstExpandDelayMs : '',
+   pd.questionAnswerDurationMs || 0
+  );
+  }
+  rows.push(row);
+ });
+ triggerCsvDownload('threads_study_wide_table.csv', rows);
+ }
+ // 產生 12 份模擬驗收資料檔（含正常奇偶編號、檢查碼竄改、重複編號、異常快速、感受同值）供一鍵驗收第 12 節標準 10 與 11
+ async function generate12DemoDatasets() {
+ const specs = [
+  { pid: 'P001', pre: '國民黨', post: '國民黨', scores: [2, 5, 6, 3, 2, 5], totalMs: 312000, expandMask: [1, 1, 1, 0, 1, 1], commentPost: 3, commentText: '@kai_watch_88 貼文是寫超過2000輛機車，不是200輛喔！' },
+  { pid: 'P002', pre: '民進黨', post: '民進黨', scores: [3, 3, 2, 2, 5, 6], totalMs: 298000, expandMask: [1, 1, 1, 1, 1, 1], commentPost: 6, commentText: '@jay_election_99 40.2%比40.0%高，而且19.8%是未表態市民。' },
+  { pid: 'P003', pre: '台灣民眾黨', post: '無政治立場', scores: [4, 5, 5, 3, 4, 5], totalMs: 275000, expandMask: [1, 0, 1, 1, 0, 1], commentPost: null },
+  { pid: 'P004', pre: '無政治立場', post: '無政治立場', scores: [3, 4, 6, 2, 3, 5], totalMs: 340000, expandMask: [1, 1, 1, 1, 1, 1], commentPost: 2, commentText: '剛看內文寫的是兩度專訪，10/7跟10/14各一次。' },
+  { pid: 'P005', pre: '國民黨', post: '其他', scores: [2, 6, 6, 4, 2, 5], totalMs: 289000, expandMask: [0, 1, 1, 0, 1, 1], commentPost: null },
+  { pid: 'P006', pre: '民進黨', post: '民進黨', scores: [4, 3, 2, 1, 5, 5], totalMs: 318000, expandMask: [1, 1, 1, 1, 1, 1], commentPost: 5, commentText: '圖卡上面寫的是軌道、都更、勞工三項政見。' },
+  { pid: 'P007', pre: '其他', post: '其他', scores: [3, 5, 5, 3, 4, 6], totalMs: 264000, expandMask: [1, 1, 0, 1, 1, 1], commentPost: null },
+  { pid: 'P008', pre: '不願回答', post: '不願回答', scores: [4, 4, 5, 3, 4, 5], totalMs: 251000, expandMask: [0, 1, 1, 0, 0, 1], commentPost: null },
+  // 第 9 份：測試「竄改一個字元即報錯」
+  { pid: 'P009', pre: '台灣民眾黨', post: '台灣民眾黨', scores: [3, 5, 6, 3, 3, 6], totalMs: 305000, expandMask: [1, 1, 1, 1, 1, 1], tamperChar: true },
+  // 第 10 份：測試「異常快速（總時間低於門檻）」
+  { pid: 'P010', pre: '無政治立場', post: '無政治立場', scores: [2, 4, 5, 3, 4, 6], totalMs: 19500, expandMask: [0, 0, 0, 0, 0, 0] },
+  // 第 11 份：測試「感受題全部同值」
+  { pid: 'P011', pre: '國民黨', post: '國民黨', scores: [4, 4, 4, 4, 4, 4], totalMs: 260000, expandMask: [1, 0, 1, 0, 1, 0] },
+  // 第 12 份：測試「重複編號 (與 P001 重複)」
+  { pid: 'P001', pre: '國民黨', post: '無政治立場', scores: [3, 5, 5, 3, 3, 5], totalMs: 280000, expandMask: [1, 1, 1, 1, 1, 1] }
+ ];
+ researcherRecords = [];
+ for (let i = 0; i < specs.length; i++) {
+  const sp = specs[i];
+  const dummy = createInitialState();
+  dummy.meta.participantId = sp.pid;
+  const num = parseInt(sp.pid.slice(1), 10);
+  dummy.meta.orderVersion = (num % 2 === 1) ? 'odd_taipei_first' : 'even_newtaipei_first';
+  dummy.meta.postOrderIds = (num % 2 === 1) ? [1, 2, 3, 4, 5, 6] : [4, 5, 6, 1, 2, 3];
+  dummy.meta.startedAt = '2026-10-18T14:00:00.000Z';
+  dummy.meta.endedAt = '2026-10-18T14:06:00.000Z';
+  dummy.consent = { ageConfirmed: true, consentConfirmed: true, consentedAt: '2026-10-18T14:00:10.000Z' };
+  dummy.answers.preTest = {
+  value: sp.pre, confirmed: true, firstShownPerfMs: 500,
+  firstAnswerAt: '2026-10-18T14:00:05.000Z', firstValue: sp.pre,
+  confirmedAt: '2026-10-18T14:00:08.000Z', answerDurationMs: 4200,
+  history: [{ action: 'select', value: sp.pre, at: '2026-10-18T14:00:05.000Z', fgMs: 3200 }]
+  };
+  dummy.answers.postTest = {
+  value: sp.post, confirmed: true, firstShownPerfMs: 250000,
+  firstAnswerAt: '2026-10-18T14:05:30.000Z', firstValue: sp.post,
+  confirmedAt: '2026-10-18T14:05:35.000Z', answerDurationMs: 3800,
+  history: [{ action: 'select', value: sp.post, at: '2026-10-18T14:05:30.000Z', fgMs: 252000 }]
+  };
+  ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'].forEach((sKey, idx) => {
+  dummy.dwell.screens[sKey] = {
+   visibleMs: sKey === 'S4' ? Math.round(sp.totalMs * 0.76) : 5200 + idx * 700,
+   enterCount: 1,
+   firstEnterAt: idx * 5000,
+   lastLeaveAt: (idx + 1) * 5000
+  };
+  });
+  dummy.dwell.sessionTotal.wallClockMs = sp.totalMs + 12000;
+  dummy.dwell.sessionTotal.activeForegroundMs = sp.totalMs;
+  dummy.dwell.reviewPage = { visibleMs: 11400, modifyCount: i % 2 };
+  for (let pid = 1; pid <= 6; pid++) {
+  const sc = sp.scores[pid - 1];
+  const exp = sp.expandMask[pid - 1] === 1;
+  dummy.answers.posts[pid] = {
+   score: sc,
+   reason: exp ? '看完留言討論後的直覺感受' : '依貼文內容評分',
+   source: exp ? '留言區' : '貼文內容',
+   confirmed: true,
+   firstShownAtFgMs: pid * 38000,
+   firstAnswerAt: '2026-10-18T14:02:00.000Z',
+   firstValue: sc,
+   confirmedAt: '2026-10-18T14:02:06.000Z',
+   answerDurationMs: 5400 + pid * 310,
+   history: [{ action: 'confirm', value: sc, at: '2026-10-18T14:02:06.000Z', fgMs: pid * 43000 }]
+  };
+  dummy.dwell.posts[pid] = {
+   postId: pid,
+   startedAtFgMs: (pid - 1) * 42000,
+   postVisibleMs: Math.round(sp.totalMs / 6),
+   commentsExpandedMs: exp ? 18500 + pid * 900 : 0,
+   firstExpandDelayMs: exp ? 6200 + pid * 450 : null,
+   expandCount: exp ? 1 : 0,
+   inputFocusMs: sp.commentPost === pid ? 9400 : 0,
+   firstCommentDelayMs: sp.commentPost === pid ? 24500 : null,
+   questionAnswerDurationMs: 5400 + pid * 310,
+   scheduledIntervalsMs: { enterToTypingMs: 2400, typingToFirstMs: 4100, betweenCommentsMs: [3200, 2800] }
+  };
+  }
+  if (sp.commentPost) {
+  dummy.comments.push({
+   id: `demo_c_${i}`,
+   postId: sp.commentPost,
+   replyTo: sp.commentPost === 3 ? 'kai_watch_88' : (sp.commentPost === 6 ? 'jay_election_99' : null),
+   text: sp.commentText,
+   createdAt: '2026-10-18T14:03:12.000Z',
+   perfMs: 125000,
+   fgMs: 120000,
+   retracted: false,
+   retractedAt: null
+  });
+  }
+  const canonical = buildCanonicalExportPayload(dummy);
+  const integrity = await computeIntegrityHash(canonical);
+  const exported = Object.assign({}, canonical, { integrity });
+  // 第 9 份刻意竄改一個字元（把貼文 1 分數從 3 改成 7 但不更新檢查碼）以驗證檢查碼報錯
+  if (sp.tamperChar) {
+  exported.answers.posts[1].score = 7;
+  }
+  const fname = `study_${sp.pid}_20261018_14${String(i + 10).padStart(2, '0')}${sp.tamperChar ? '_tampered' : ''}.json`;
+  const validated = await validateImportedJsonRecord(fname, exported);
+  researcherRecords.push(validated);
+ }
+ await refreshResearcherDashboard();
+ }
+ /* =========================================================================
+ * 14. 路由切換 (#researcher vs 受試者模式) 與全站事件初始化
+ * ========================================================================= */
+ function checkModeByHash(forceRes = false) {
+ const isRes = forceRes === true || (window.location.hash && window.location.hash.toLowerCase().includes('researcher'));
+ if (isRes) {
+  document.body.classList.add('researcher-mode-active');
+  refreshResearcherDashboard();
+ } else {
+  document.body.classList.remove('researcher-mode-active');
+ }
+ }
+ function restoreSavedSessionIfAvailable() {
+ const savedRaw = safeStorageGet(STORAGE_KEY_PROGRESS);
+ if (!savedRaw) return;
+ try {
+  const parsed = JSON.parse(savedRaw);
+  if (!parsed || !parsed.meta || parsed.meta.version !== CONFIG.version) return;
+  const hasAnyAction = (parsed.events && parsed.events.length > 0) || parsed.answers.preTest.value !== null;
+  if (!hasAnyAction) return;
+  const banner = document.getElementById('resume-banner');
+  const btnKeep = document.getElementById('btn-resume-keep');
+  const btnReset = document.getElementById('btn-resume-reset');
+  if (banner && btnKeep && btnReset) {
+  banner.style.display = 'block';
+  btnKeep.onclick = () => {
+   banner.style.display = 'none';
+   appState = parsed;
+   restoreUiFromAppState();
+  };
+  btnReset.onclick = () => {
+   banner.style.display = 'none';
+   safeStorageRemove(STORAGE_KEY_PROGRESS);
+   clearAllForegroundTimers();
+   appState = createInitialState();
+   switchLogicalScreen('S2');
+   showDomScreen('screen-S1-S2');
+   refreshOpeningS1S2UI();
+  };
+  }
+ } catch (err) {}
+ }
+ function restoreUiFromAppState() {
+ clearAllForegroundTimers();
+ const scr = appState.currentScreen || 'S2';
+ if (scr === 'S1' || scr === 'S2') {
+  showDomScreen('screen-S1-S2');
+  refreshOpeningS1S2UI();
+ } else if (scr === 'S3') {
+  showDomScreen('screen-S3');
+ } else if (scr === 'S4') {
+  showDomScreen('screen-S4');
+  // 將進行中但尚未完成排程的貼文重啟排程
+  POSTS.forEach(p => {
+  const rp = appState.runtimePosts[p.id];
+  if (rp) {
+   if ((rp.revealedCount || 0) < CONFIG.timing.initialCommentCount) {
+   rp.revealedCount = CONFIG.timing.initialCommentCount;
+   }
+   if (rp.scheduleStarted && !rp.feelingShown) {
+   rp.scheduleStarted = false;
+   }
+  }
+  });
+  renderFeedPosts();
+ } else if (scr === 'S5') {
+  showDomScreen('screen-S5');
+  refreshPostTestS5UI();
+ } else if (scr === 'S6' || scr === 'S7') {
+  navigateToReviewS6();
+ } else if (scr === 'S8') {
+  finalizeAndEnterResultsS8();
+ }
+ updateStageHeaderBar();
+ }
+ function initApp() {
+ initTheme();
+ checkModeByHash();
+ window.addEventListener('hashchange', checkModeByHash);
+ const consentBox = document.getElementById('consent-text-box');
+ if (consentBox) {
+  consentBox.textContent = CONFIG.consentText;
+ }
+ // 初始進入 S2（最一開始先問清政治立場）
+ switchLogicalScreen('S2');
+ refreshOpeningS1S2UI();
+ restoreSavedSessionIfAvailable();
+ // 尚未下載資料檔就關閉分頁時，跳出離開確認
+ window.addEventListener('beforeunload', e => {
+  if (document.body.classList.contains('researcher-mode-active')) return;
+  const started = appState.events.length > 0 || appState.answers.preTest.value !== null;
+  if (started && !appState.hasDownloaded) {
+  e.preventDefault();
+  e.returnValue = '您尚未完成並下載研究資料檔，確定要離開嗎？';
+  return e.returnValue;
+  }
+ });
+ // --- 綁定 S2 前測政治立場確認與修改 ---
+ document.getElementById('btn-confirm-pretest').addEventListener('click', () => {
+  confirmStanceQuestion('preTest');
+  // 前測確認後，若不是從 S6 返回，則將停留計時切到 S1 入口同意書區塊
+  if (!appState.returningToReview) {
+  switchLogicalScreen('S1');
+  }
+  refreshOpeningS1S2UI();
+ });
+ document.getElementById('btn-modify-pretest').addEventListener('click', () => {
+  switchLogicalScreen('S2');
+  unlockStanceQuestion('preTest');
+  refreshOpeningS1S2UI();
+ });
+ document.getElementById('btn-back-to-s6-from-s2').addEventListener('click', () => {
+  if (!appState.answers.preTest.confirmed) {
+  document.getElementById('btn-confirm-pretest').focus();
+  return;
+  }
+  navigateToReviewS6();
+ });
+ // --- 綁定 S1 受試者編號、年齡、同意書 ---
+ const pidInput = document.getElementById('input-participant-id');
+ pidInput.addEventListener('focus', () => {
+  if (appState.answers.preTest.confirmed && appState.currentScreen !== 'S1') {
+  switchLogicalScreen('S1');
+  }
+ });
+ pidInput.addEventListener('input', () => {
+  const val = pidInput.value.trim().toUpperCase();
+  appState.meta.participantId = val;
+  if (CONFIG.participantIdPattern.test(val)) {
+  applyParticipantOrderFromId(val);
+  logEvent('participant_id_input', { participantId: val, orderVersion: appState.meta.orderVersion });
+  }
+  refreshOpeningS1S2UI();
+  saveProgressToStorage();
+ });
+ document.getElementById('chk-allow-duplicate').addEventListener('change', () => {
+  refreshOpeningS1S2UI();
+ });
+ document.getElementById('chk-age-confirm').addEventListener('change', e => {
+  appState.consent.ageConfirmed = !!e.target.checked;
+  if (appState.consent.ageConfirmed && appState.consent.consentConfirmed) {
+  appState.consent.consentedAt = new Date().toISOString();
+  logEvent('consent_checked', { consentedAt: appState.consent.consentedAt });
+  }
+  refreshOpeningS1S2UI();
+  saveProgressToStorage();
+ });
+ document.getElementById('chk-consent-confirm').addEventListener('change', e => {
+  appState.consent.consentConfirmed = !!e.target.checked;
+  if (appState.consent.ageConfirmed && appState.consent.consentConfirmed) {
+  appState.consent.consentedAt = new Date().toISOString();
+  logEvent('consent_checked', { consentedAt: appState.consent.consentedAt });
+  }
+  refreshOpeningS1S2UI();
+  saveProgressToStorage();
+ });
+ // S1 + S2 完成 → 進入 S3 操作說明
+ document.getElementById('btn-go-s3').addEventListener('click', () => {
+  if (!appState.answers.preTest.confirmed) return;
+  applyParticipantOrderFromId(appState.meta.participantId);
+  switchLogicalScreen('S3');
+  showDomScreen('screen-S3');
+ });
+ // S3 → 進入 S4 貼文區
+ document.getElementById('btn-start-feed-s4').addEventListener('click', () => {
+  switchLogicalScreen('S4');
+  showDomScreen('screen-S4');
+  renderFeedPosts();
+ });
+ // S4 完成 6 篇貼文 → 進入 S5 後測 (或若關閉後測則直接進入 S6)
+ document.getElementById('btn-go-s5').addEventListener('click', () => {
+  if (getConfirmedPostCount() < 6) return;
+  if (CONFIG.features.enablePostTest) {
+  switchLogicalScreen('S5');
+  showDomScreen('screen-S5');
+  refreshPostTestS5UI();
+  } else {
+  navigateToReviewS6();
+  }
+ });
+ // S5 後測確認與修改
+ document.getElementById('btn-confirm-posttest').addEventListener('click', () => {
+  confirmStanceQuestion('postTest');
+  refreshPostTestS5UI();
+ });
+ document.getElementById('btn-modify-posttest').addEventListener('click', () => {
+  unlockStanceQuestion('postTest');
+  refreshPostTestS5UI();
+ });
+ document.getElementById('btn-go-s6').addEventListener('click', () => {
+  if (!appState.answers.postTest.confirmed) return;
+  navigateToReviewS6();
+ });
+ // S6 → 打開 S7 送出確認對話框
+ const modalS7 = document.getElementById('modal-submit-s7');
+ document.getElementById('btn-open-submit-modal').addEventListener('click', () => {
+  if (!isEverythingConfirmed()) return;
+  switchLogicalScreen('S7');
+  logEvent('submit_dialog_open', {});
+  modalS7.classList.add('open');
+ });
+ document.getElementById('btn-cancel-s7').addEventListener('click', () => {
+  modalS7.classList.remove('open');
+  switchLogicalScreen('S6');
+ });
+ document.getElementById('btn-confirm-s7').addEventListener('click', () => {
+  modalS7.classList.remove('open');
+  finalizeAndEnterResultsS8();
+ });
+ // S8 資料檔交付按鈕
+ document.getElementById('btn-download-json').addEventListener('click', downloadJsonFile);
+ document.getElementById('btn-share-json').addEventListener('click', shareJsonFile);
+ document.getElementById('btn-copy-json').addEventListener('click', copyJsonToClipboard);
+ // --- 研究者模式事件綁定 ---
+ const resInput = document.getElementById('res-file-input');
+ if (resInput) {
+  resInput.addEventListener('change', async e => {
+  const files = Array.from(e.target.files || []);
+  for (const f of files) {
+   try {
+   const text = await f.text();
+   const parsed = JSON.parse(text);
+   const rec = await validateImportedJsonRecord(f.name, parsed);
+   researcherRecords.push(rec);
+   } catch (err) {
+   researcherRecords.push({
+    fileName: f.name,
+    validStructure: false,
+    participantId: '解析錯誤',
+    flags: [{ type: 'err', label: 'JSON 語法損毀' }],
+    raw: null
+   });
+   }
+  }
+  resInput.value = '';
+  await refreshResearcherDashboard();
+  });
+ }
+ document.getElementById('btn-res-load-demo').addEventListener('click', () => {
+  generate12DemoDatasets();
+ });
+ document.getElementById('btn-res-clear').addEventListener('click', () => {
+  researcherRecords = [];
+  refreshResearcherDashboard();
+ });
+ document.getElementById('btn-export-long-csv').addEventListener('click', exportLongCsv);
+ document.getElementById('btn-export-wide-csv').addEventListener('click', exportWideCsv);
+ }
+ window.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
